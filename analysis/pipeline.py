@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from typing import Iterable
+from urllib.parse import urlsplit
 
 from .models import Episode, UnifiedEvent
 
@@ -165,6 +166,13 @@ def _entity_keys(events: Iterable[UnifiedEvent]) -> set[tuple[str, str]]:
     }
 
 
+def _browser_origin(event: UnifiedEvent) -> str | None:
+    if not event.url:
+        return None
+    parsed = urlsplit(event.url)
+    return parsed.netloc or None
+
+
 def _should_split(current: list[UnifiedEvent], event: UnifiedEvent) -> bool:
     previous = current[-1]
     gap = event.ts_epoch - previous.ts_epoch
@@ -179,9 +187,9 @@ def _should_split(current: list[UnifiedEvent], event: UnifiedEvent) -> bool:
     if current_entities & next_entities:
         return False
 
-    previous_context = previous.url or previous.window_title or previous.app_name
-    new_context = event.url or event.window_title or event.app_name
-    if previous_context and new_context and previous_context != new_context:
+    previous_origin = _browser_origin(previous)
+    new_origin = _browser_origin(event)
+    if previous_origin and new_origin and previous_origin != new_origin:
         return True
 
     return False

@@ -66,6 +66,27 @@
         return parts.join(" > ");
     }
 
+    function isSensitiveField(el) {
+        if (!el || el.nodeType !== Node.ELEMENT_NODE) {
+            return false;
+        }
+
+        const type = String(el.type || "").toLowerCase();
+        if (type === "password" || type === "hidden") {
+            return true;
+        }
+
+        const metadata = [
+            el.id,
+            el.getAttribute?.("name"),
+            el.getAttribute?.("autocomplete"),
+            el.getAttribute?.("aria-label"),
+            el.getAttribute?.("placeholder")
+        ].filter(Boolean).join(" ").toLowerCase();
+
+        return /password|passcode|secret|token|api[ _-]?key|authorization|bearer|private[ _-]?key|credit[ _-]?card|card[ _-]?number|cvv|cvc|ssn/.test(metadata);
+    }
+
     function elementInfo(el) {
         if (!el || el.nodeType !== Node.ELEMENT_NODE) {
             return null;
@@ -78,7 +99,7 @@
             el.tagName === "TEXTAREA" ||
             el.tagName === "SELECT"
         ) {
-            if (el.type === "password") {
+            if (isSensitiveField(el)) {
                 value = "<REDACTED>";
             } else {
                 value = String(el.value ?? "").substring(0, 1000);
@@ -90,9 +111,11 @@
             id: el.id || null,
             name: el.getAttribute?.("name"),
             type: el.getAttribute?.("type"),
+            autocomplete: el.getAttribute?.("autocomplete"),
             role: el.getAttribute?.("role"),
             text: safeText(el),
             value,
+            valueRedacted: isSensitiveField(el),
             href: el.href || null,
             ariaLabel: el.getAttribute?.("aria-label"),
             placeholder: el.getAttribute?.("placeholder"),
@@ -159,7 +182,7 @@
     document.addEventListener(
         "input",
         e => {
-            if (e.target?.type === "password") {
+            if (isSensitiveField(e.target)) {
                 send("input", e, { valueRedacted: true });
             } else {
                 send("input", e);

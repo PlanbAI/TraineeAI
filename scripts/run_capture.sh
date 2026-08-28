@@ -5,8 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 PYTHON_BIN="${PYTHON_BIN:-python3}"
-LINUX_COLLECTOR="${LINUX_COLLECTOR:-LinuxCollector.py}"
-BROWSER_COLLECTOR="${BROWSER_COLLECTOR:-BrowserListener.py.pyi}"
+LINUX_COLLECTOR="${LINUX_COLLECTOR:-collectors/LinuxCollector.py}"
+BROWSER_COLLECTOR="${BROWSER_COLLECTOR:-collectors/BrowserCollector.py}"
 DESKTOP_LOG="${DESKTOP_LOG:-events.jsonl}"
 BROWSER_LOG="${BROWSER_LOG:-browser-events.jsonl}"
 

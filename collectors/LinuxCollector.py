@@ -4,6 +4,7 @@ import json
 import signal
 import sys
 import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -154,6 +155,7 @@ class X11Collector:
 
 
 class AtspiCollector:
+    DEDUPLICATION_WINDOW_SECONDS = 1.0
     EVENT_TYPES = (
         "object:state-changed:focused",
         "object:state-changed:checked",
@@ -171,6 +173,7 @@ class AtspiCollector:
     def __init__(self):
         Atspi.init()
         self.listener = Atspi.EventListener.new(self._on_event)
+        self.recent_events: dict[str, float] = {}
 
     def register(self) -> None:
         for event_type in self.EVENT_TYPES:
@@ -212,6 +215,11 @@ class AtspiCollector:
 
     def _on_event(self, event) -> None:
         try:
+            # Terminal keystrokes and scrolling create high-volume events
+            # without recording actionable UI intent.
+            if event.type.startswith("object:text-changed") or event.type == "object:property-change:accessible-value":
+                return
+
             source = event.source
             if source is None:
                 return
@@ -266,6 +274,15 @@ class AtspiCollector:
 
             if event.type.startswith("object:text-changed"):
                 payload["content_redacted"] = True
+
+            signature = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+            now = time.monotonic()
+            previous = self.recent_events.get(signature)
+            if previous is not None and now - previous < self.DEDUPLICATION_WINDOW_SECONDS:
+                return
+            self.recent_events[signature] = now
+            if len(self.recent_events) > 1024:
+                self.recent_events = {signature: now}
 
             emit_event(payload)
 

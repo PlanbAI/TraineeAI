@@ -1,0 +1,7 @@
+.idea/
+.venv/
+__pycache__/
+*.py[cod]
+browser-events.jsonl
+events.jsonl
+test-output/

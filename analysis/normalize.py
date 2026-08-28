@@ -12,6 +12,11 @@ JIRA_RE = re.compile(r"\b[A-Z][A-Z0-9]+-\d+\b")
 GIT_SHA_RE = re.compile(r"\b[0-9a-f]{7,40}\b", re.IGNORECASE)
 URL_RE = re.compile(r"https?://[^\s\"'<>]+")
 BUILD_RE = re.compile(r"\b(?:build[-_ ]?)?(\d{3,})\b", re.IGNORECASE)
+SENSITIVE_TARGET_RE = re.compile(
+    r"password|passcode|secret|token|api[ _-]?key|authorization|bearer|"
+    r"private[ _-]?key|credit[ _-]?card|card[ _-]?number|cvv|cvc|ssn",
+    re.IGNORECASE,
+)
 
 
 def _parse_timestamp(value: str | None) -> tuple[str, float]:
@@ -52,12 +57,27 @@ def _entity_values(*values: object) -> list[dict[str, str]]:
     return found
 
 
+def _redact_sensitive_target(element: dict | None) -> dict | None:
+    if not element:
+        return None
+
+    target = dict(element)
+    metadata = " ".join(
+        str(target.get(key) or "")
+        for key in ("id", "name", "type", "autocomplete", "ariaLabel", "placeholder")
+    )
+    if str(target.get("type") or "").lower() == "hidden" or SENSITIVE_TARGET_RE.search(metadata):
+        target["value"] = "<REDACTED>"
+        target["valueRedacted"] = True
+    return target
+
+
 def normalize_browser(event: dict) -> UnifiedEvent:
     timestamp, epoch = _parse_timestamp(
         event.get("timestamp") or event.get("_collector_timestamp")
     )
     page = event.get("page") or {}
-    element = event.get("element") or None
+    element = _redact_sensitive_target(event.get("element") or None)
     tab = event.get("_tab") or {}
     event_type = event.get("type", "browser.unknown")
 
@@ -65,7 +85,8 @@ def normalize_browser(event: dict) -> UnifiedEvent:
         "mouse": event.get("mouse"),
         "keyboard": event.get("keyboard"),
         "navigation_type": event.get("navigationType"),
-        "value_redacted": event.get("valueRedacted", False),
+        "value_redacted": event.get("valueRedacted", False)
+        or bool(element and element.get("valueRedacted")),
     }
 
     entities = _entity_values(
