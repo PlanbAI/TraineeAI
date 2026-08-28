@@ -94,7 +94,7 @@ if [[ ! -f LinuxCollector.py ]]; then
   exit 3
 fi
 
-if [[ ! -f BrowserCollector.py ]]; then
+if [[ ! -f BrowserListener.py.pyi ]]; then
   echo "ERROR: BrowserListener.py.pyi not found in repository root" >&2
   exit 4
 fi
@@ -149,7 +149,7 @@ echo "[*] CDP is ready"
 LINUX_COLLECTOR_PID=$!
 echo "[*] Linux collector started (pid=$LINUX_COLLECTOR_PID)"
 
-"$PYTHON_BIN" BrowserCollector.py >"$OUTPUT_DIR/browser-collector.stdout.log" 2>"$OUTPUT_DIR/browser-collector.stderr.log" &
+"$PYTHON_BIN" BrowserListener.py.pyi >"$OUTPUT_DIR/browser-collector.stdout.log" 2>"$OUTPUT_DIR/browser-collector.stderr.log" &
 BROWSER_COLLECTOR_PID=$!
 echo "[*] Browser collector started (pid=$BROWSER_COLLECTOR_PID)"
 
