@@ -4,6 +4,7 @@ import json
 import threading
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 import requests
 import websocket
@@ -14,304 +15,20 @@ CDP_PORT = 9222
 OUTPUT_FILE = "browser-events.jsonl"
 
 BINDING_NAME = "__pythonUserEvent"
+SCRIPT_DIR = Path(__file__).resolve().parent
+LISTENER_JS_FILE = SCRIPT_DIR / "browser_listener.js"
 
-# JS выполняется внутри каждой страницы.
-# Код самой страницы на диске/сервере не изменяется.
-LISTENER_JS = r"""
-(() => {
-    if (window.__pythonCdpListenerInstalled) {
-        return;
-    }
 
-    window.__pythonCdpListenerInstalled = true;
+def load_listener_js() -> str:
+    try:
+        return LISTENER_JS_FILE.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise RuntimeError(
+            f"Cannot load browser listener JavaScript: {LISTENER_JS_FILE}"
+        ) from exc
 
-    function safeText(el) {
-        if (!el) return null;
 
-        let text =
-            el.innerText ||
-            el.getAttribute?.("aria-label") ||
-            el.getAttribute?.("title") ||
-            el.getAttribute?.("placeholder") ||
-            "";
-
-        text = String(text)
-            .replace(/\s+/g, " ")
-            .trim();
-
-        return text.substring(0, 500);
-    }
-
-    function selector(el) {
-        if (!el || el.nodeType !== Node.ELEMENT_NODE) {
-            return null;
-        }
-
-        if (el.id) {
-            return "#" + CSS.escape(el.id);
-        }
-
-        const parts = [];
-        let current = el;
-
-        while (
-            current &&
-            current.nodeType === Node.ELEMENT_NODE &&
-            parts.length < 6
-        ) {
-            let part = current.tagName.toLowerCase();
-
-            if (current.classList && current.classList.length) {
-                const classes = [...current.classList]
-                    .slice(0, 3)
-                    .map(c => "." + CSS.escape(c))
-                    .join("");
-
-                part += classes;
-            }
-
-            if (current.parentElement) {
-                const sameTags = [...current.parentElement.children]
-                    .filter(x => x.tagName === current.tagName);
-
-                if (sameTags.length > 1) {
-                    part += `:nth-of-type(${sameTags.indexOf(current) + 1})`;
-                }
-            }
-
-            parts.unshift(part);
-            current = current.parentElement;
-        }
-
-        return parts.join(" > ");
-    }
-
-    function elementInfo(el) {
-        if (!el || el.nodeType !== Node.ELEMENT_NODE) {
-            return null;
-        }
-
-        let value = null;
-
-        // Не логируем пароли.
-        if (
-            (el.tagName === "INPUT" ||
-             el.tagName === "TEXTAREA" ||
-             el.tagName === "SELECT")
-        ) {
-            if (el.type === "password") {
-                value = "<REDACTED>";
-            } else {
-                value = String(el.value ?? "").substring(0, 1000);
-            }
-        }
-
-        return {
-            tag: el.tagName?.toLowerCase() || null,
-            id: el.id || null,
-            name: el.getAttribute?.("name"),
-            type: el.getAttribute?.("type"),
-            role: el.getAttribute?.("role"),
-            text: safeText(el),
-            value: value,
-            href: el.href || null,
-            ariaLabel: el.getAttribute?.("aria-label"),
-            placeholder: el.getAttribute?.("placeholder"),
-            selector: selector(el)
-        };
-    }
-
-    function send(type, event, extra = {}) {
-        try {
-            const target =
-                event?.target?.nodeType === Node.ELEMENT_NODE
-                    ? event.target
-                    : document.activeElement;
-
-            const data = {
-                timestamp: new Date().toISOString(),
-                type: type,
-
-                page: {
-                    url: location.href,
-                    title: document.title
-                },
-
-                element: elementInfo(target),
-
-                mouse: event && "clientX" in event ? {
-                    x: event.clientX,
-                    y: event.clientY,
-                    button: event.button
-                } : null,
-
-                keyboard: event && "key" in event ? {
-                    key: event.key,
-                    code: event.code,
-                    ctrl: event.ctrlKey,
-                    alt: event.altKey,
-                    shift: event.shiftKey,
-                    meta: event.metaKey
-                } : null,
-
-                ...extra
-            };
-
-            window.__pythonUserEvent(JSON.stringify(data));
-
-        } catch (e) {
-            console.error("CDP listener error:", e);
-        }
-    }
-
-
-    // ============================================================
-    // Mouse
-    // ============================================================
-
-    document.addEventListener(
-        "click",
-        e => send("click", e),
-        true
-    );
-
-    document.addEventListener(
-        "dblclick",
-        e => send("dblclick", e),
-        true
-    );
-
-    document.addEventListener(
-        "contextmenu",
-        e => send("contextmenu", e),
-        true
-    );
-
-
-    // ============================================================
-    // Keyboard
-    // ============================================================
-
-    document.addEventListener(
-        "keydown",
-        e => send("keydown", e),
-        true
-    );
-
-
-    // ============================================================
-    // Form/input
-    // ============================================================
-
-    document.addEventListener(
-        "change",
-        e => send("change", e),
-        true
-    );
-
-    document.addEventListener(
-        "input",
-        e => {
-            // Не отправляем password contents.
-            if (e.target?.type === "password") {
-                send("input", e, {
-                    valueRedacted: true
-                });
-            } else {
-                send("input", e);
-            }
-        },
-        true
-    );
-
-    document.addEventListener(
-        "submit",
-        e => send("submit", e),
-        true
-    );
-
-
-    // ============================================================
-    // Focus
-    // ============================================================
-
-    document.addEventListener(
-        "focusin",
-        e => send("focus", e),
-        true
-    );
-
-
-    // ============================================================
-    // Clipboard
-    // ============================================================
-
-    document.addEventListener(
-        "copy",
-        e => send("copy", e),
-        true
-    );
-
-    document.addEventListener(
-        "cut",
-        e => send("cut", e),
-        true
-    );
-
-    document.addEventListener(
-        "paste",
-        e => send("paste", e),
-        true
-    );
-
-
-    // ============================================================
-    // Navigation APIs used by SPA
-    // ============================================================
-
-    const originalPushState = history.pushState;
-
-    history.pushState = function(...args) {
-        const result = originalPushState.apply(this, args);
-
-        send("navigation", null, {
-            navigationType: "pushState"
-        });
-
-        return result;
-    };
-
-
-    const originalReplaceState = history.replaceState;
-
-    history.replaceState = function(...args) {
-        const result = originalReplaceState.apply(this, args);
-
-        send("navigation", null, {
-            navigationType: "replaceState"
-        });
-
-        return result;
-    };
-
-
-    window.addEventListener("popstate", () => {
-        send("navigation", null, {
-            navigationType: "popstate"
-        });
-    });
-
-
-    window.addEventListener("hashchange", () => {
-        send("navigation", null, {
-            navigationType: "hashchange"
-        });
-    });
-
-
-    console.log("Python CDP user listener installed");
-})();
-"""
+LISTENER_JS = load_listener_js()
 
 
 def write_event(event):
@@ -367,11 +84,9 @@ class CDPConnection:
                 suppress_origin=True
             )
 
-            # Включаем необходимые CDP domains
             self.send("Runtime.enable")
             self.send("Page.enable")
 
-            # Создаём канал JS -> Python
             self.send(
                 "Runtime.addBinding",
                 {
@@ -379,7 +94,7 @@ class CDPConnection:
                 }
             )
 
-            # Для всех будущих document/frame.
+            # Install listener automatically in every future document/frame.
             self.send(
                 "Page.addScriptToEvaluateOnNewDocument",
                 {
@@ -387,7 +102,7 @@ class CDPConnection:
                 }
             )
 
-            # А также текущая уже загруженная страница.
+            # Also install it in the page that is already loaded.
             self.send(
                 "Runtime.evaluate",
                 {
@@ -402,7 +117,6 @@ class CDPConnection:
                     break
 
                 message = json.loads(raw)
-
                 method = message.get("method")
 
                 if method == "Runtime.bindingCalled":
@@ -436,7 +150,7 @@ class CDPConnection:
                         .get("frame", {})
                     )
 
-                    # Только top frame
+                    # Record only top-frame navigation here.
                     if not frame.get("parentId"):
                         write_event({
                             "type": "page_navigation",
@@ -446,6 +160,11 @@ class CDPConnection:
                             "page": {
                                 "url": frame.get("url"),
                                 "name": frame.get("name")
+                            },
+                            "_tab": {
+                                "targetId": self.target.get("id"),
+                                "initialUrl": self.target.get("url"),
+                                "initialTitle": self.target.get("title")
                             }
                         })
 
@@ -468,9 +187,7 @@ lock = threading.Lock()
 
 
 def get_targets():
-    url = (
-        f"http://{CDP_HOST}:{CDP_PORT}/json"
-    )
+    url = f"http://{CDP_HOST}:{CDP_PORT}/json"
 
     response = requests.get(
         url,
@@ -478,7 +195,6 @@ def get_targets():
     )
 
     response.raise_for_status()
-
     return response.json()
 
 
@@ -499,22 +215,18 @@ def monitor_targets():
         f"http://{CDP_HOST}:{CDP_PORT}"
     )
 
-    print(
-        f"[*] Output: {OUTPUT_FILE}"
-    )
+    print(f"[*] Listener JS: {LISTENER_JS_FILE}")
+    print(f"[*] Output: {OUTPUT_FILE}")
 
     while True:
         try:
             targets = get_targets()
 
             for target in targets:
-
                 if target.get("type") != "page":
                     continue
 
-                if not target.get(
-                    "webSocketDebuggerUrl"
-                ):
+                if not target.get("webSocketDebuggerUrl"):
                     continue
 
                 target_id = target["id"]
@@ -523,9 +235,7 @@ def monitor_targets():
                     if target_id in active_targets:
                         continue
 
-                    active_targets.add(
-                        target_id
-                    )
+                    active_targets.add(target_id)
 
                 thread = threading.Thread(
                     target=target_worker,
