@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 CHROME_BIN="${CHROME_BIN:-}"
 CDP_PORT="${CDP_PORT:-9222}"
-CDP_PROFILE_DIR="${CDP_PROFILE_DIR:-$HOME/.traineeai-cdp-profile}"
+CDP_PROFILE_DIR="${CDP_PROFILE_DIR:-}"
 DURATION_SEC="${DURATION_SEC:-0}"
 COLLECTOR="$ROOT_DIR/collectors/BrowserCollector.py"
 CDP_URL="http://127.0.0.1:${CDP_PORT}/json/version"
@@ -25,6 +25,20 @@ find_chrome() {
     command -v "$candidate" 2>/dev/null && return 0
   done
   return 1
+}
+
+set_cdp_profile_dir() {
+  if [[ -n "$CDP_PROFILE_DIR" ]]; then
+    return
+  fi
+
+  if [[ "$(basename "$CHROME_EXEC")" =~ ^chromium(-browser)?$ ]] \
+    && command -v snap >/dev/null 2>&1 \
+    && snap list chromium >/dev/null 2>&1; then
+    CDP_PROFILE_DIR="$HOME/snap/chromium/common/traineeai-cdp-profile"
+  else
+    CDP_PROFILE_DIR="$HOME/.traineeai-cdp-profile"
+  fi
 }
 
 cdp_ready() {
@@ -54,6 +68,7 @@ command -v "$PYTHON_BIN" >/dev/null 2>&1 || { echo "ERROR: Python not found: $PY
 
 if ! cdp_ready; then
   CHROME_EXEC="$(find_chrome)" || { echo "ERROR: Chrome/Chromium was not found." >&2; exit 5; }
+  set_cdp_profile_dir
   mkdir -p "$CDP_PROFILE_DIR"
   "$CHROME_EXEC" \
     --remote-debugging-address=127.0.0.1 \

@@ -18,6 +18,7 @@ Trainee/
 |  |- __init__.py
 |  |- BrowserCollector.py
 |  |- LinuxCollector.py
+|  |- WindowsCollector.py
 |  |- watcher_x11.py
 |  `- watcher_x11_gi.py
 |- scripts/

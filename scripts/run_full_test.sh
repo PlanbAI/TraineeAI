@@ -7,7 +7,7 @@ cd "$ROOT_DIR"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 CHROME_BIN="${CHROME_BIN:-}"
 CDP_PORT="${CDP_PORT:-9222}"
-CDP_PROFILE_DIR="${CDP_PROFILE_DIR:-$HOME/.chrome-cdp-profile}"
+CDP_PROFILE_DIR="${CDP_PROFILE_DIR:-}"
 OUTPUT_DIR="${OUTPUT_DIR:-test-output}"
 DESKTOP_LOG="${DESKTOP_LOG:-events.jsonl}"
 BROWSER_LOG="${BROWSER_LOG:-browser-events.jsonl}"
@@ -40,6 +40,20 @@ find_chrome() {
   done
 
   return 1
+}
+
+set_cdp_profile_dir() {
+  if [[ -n "$CDP_PROFILE_DIR" ]]; then
+    return
+  fi
+
+  if [[ "$(basename "$CHROME_EXEC")" =~ ^chromium(-browser)?$ ]] \
+    && command -v snap >/dev/null 2>&1 \
+    && snap list chromium >/dev/null 2>&1; then
+    CDP_PROFILE_DIR="$HOME/snap/chromium/common/traineeai-cdp-profile"
+  else
+    CDP_PROFILE_DIR="$HOME/.chrome-cdp-profile"
+  fi
 }
 
 wait_for_cdp() {
@@ -112,6 +126,8 @@ if [[ -z "$CHROME_EXEC" ]]; then
   echo "  CHROME_BIN=/usr/bin/chromium ./scripts/run_full_test.sh" >&2
   exit 5
 fi
+
+set_cdp_profile_dir
 
 echo "=== TraineeAI full test ==="
 echo "Python        : $PYTHON_BIN"
