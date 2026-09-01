@@ -25,3 +25,7 @@ TraineeAI records and replays input sent from a local Windows 10 or 11 machine t
 - The local client cannot distinguish a remote terminal from a remote password prompt. Users must start recording only after authentication and stop it before entering secrets.
 - Replay is sensitive to RDP client size, DPI, keyboard layout, remote UI state, and network delay. The recorder stores client size; replay rejects a size mismatch unless explicitly overridden.
 - The local client cannot confirm that a remote application processed an action. A future optional user-level remote agent can provide execution confirmation and richer PowerShell/Bash semantics.
+
+## Validation Status
+
+The controller has passed compilation, unit tests, PowerShell parsing, and a local Win32 hook smoke test. It has not yet been tested against a live authorized RDP session, including end-to-end recording and `--execute` replay.
