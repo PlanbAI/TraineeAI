@@ -112,6 +112,8 @@ class RdpRecorder:
         self.command_buffer: list[str] = []
         self.paused = False
         self.paste_key_active = False
+        self.last_mouse_move_at = 0.0
+        self.last_mouse_position: tuple[int, int] | None = None
         self.user32 = ctypes.windll.user32
         self.kernel32 = ctypes.windll.kernel32
         self.keyboard_hook = None
@@ -253,6 +255,13 @@ class RdpRecorder:
         }
         if message in mapping:
             kind, detail = mapping[message]
+            if kind == "move":
+                now = time.monotonic()
+                position = (point.x, point.y)
+                if position == self.last_mouse_position or now - self.last_mouse_move_at < 0.05:
+                    return self.user32.CallNextHookEx(self.mouse_hook, code, message, data)
+                self.last_mouse_move_at = now
+                self.last_mouse_position = position
             self.emit("rdp.input", context, input={"kind": kind, "detail": detail, "x": point.x, "y": point.y})
         return self.user32.CallNextHookEx(self.mouse_hook, code, message, data)
 

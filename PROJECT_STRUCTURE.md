@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The project records Linux desktop and Chrome browser activity, then deterministically builds candidate user-task episodes.
+The project records Linux and Windows desktop activity, Chromium browser activity, and optional Windows RDP input, then deterministically builds candidate user-task episodes.
 
 ## File Tree
 
@@ -32,6 +32,8 @@ Trainee/
 |  |- run_capture.sh
 |  `- run_full_test.sh
 |- docs/
+|  |- ai-llm-integration.md
+|  |- rdp-recorder-requirements.md
 |  `- ubuntu-virtualbox-test.md
 |- tests/
 |  `- test_preprocessing.py
@@ -48,6 +50,8 @@ Trainee/
 - `collectors/watcher_x11_gi.py` uses AT-SPI through PyGObject to list applications and print the selected application's accessibility tree.
 - `collectors/BrowserCollector.py` connects to Chrome DevTools Protocol on `127.0.0.1:9222`, injects `browser_listener.js` into browser pages, and writes captured events to `browser-events.jsonl`.
 - `collectors/LinuxCollector.py` combines X11 window context and AT-SPI UI semantics, writing privacy-preserving desktop events to `events.jsonl`.
+- `collectors/WindowsCollector.py` records foreground Windows application changes in the same desktop JSONL format.
+- `collectors/WindowsRdpCollector.py` records input for one explicitly selected `mstsc.exe` window, and `collectors/WindowsRdpReplay.py` provides guarded replay.
 - `analysis/` normalizes both logs, enriches the unified timeline, reduces input noise, segments sessions and builds candidate episodes.
 - `scripts/` provides manual capture and end-to-end analysis commands.
 - `requirements.txt` lists Python dependencies, including Linux-only X11 and AT-SPI bindings.

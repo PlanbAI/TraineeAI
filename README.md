@@ -24,6 +24,12 @@ Results are written to `test-output/`:
 - `llm-payloads.jsonl`: one analysis payload per episode.
 - `*-collector.stdout.log` and `*-collector.stderr.log`: collector diagnostics.
 
+## AI/LLM Integration
+
+Run analysis with `--llm-payload-output` to create one grounded, schema-constrained LLM request per candidate episode. The recommended workflow is to send `llm-payloads.jsonl`, not raw keyboard, mouse, browser, or RDP logs, to an AI system.
+
+See [AI/LLM Integration Guide](docs/ai-llm-integration.md) for artifact contracts, prompting rules, redaction boundaries, RDP-specific interpretation, and human-review requirements.
+
 ### Windows
 
 Run these commands in PowerShell. The two collector commands run in separate PowerShell windows.
@@ -201,4 +207,4 @@ bash -n scripts/run_browser_collector.sh scripts/run_full_test.sh
 
 ## Project Layout
 
-See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for the component map and [docs/ubuntu-virtualbox-test.md](docs/ubuntu-virtualbox-test.md) for the VirtualBox test environment.
+See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for the component map, [AI/LLM Integration Guide](docs/ai-llm-integration.md) for AI consumers, and [docs/ubuntu-virtualbox-test.md](docs/ubuntu-virtualbox-test.md) for the VirtualBox test environment.

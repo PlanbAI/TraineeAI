@@ -28,4 +28,4 @@ TraineeAI records and replays input sent from a local Windows 10 or 11 machine t
 
 ## Validation Status
 
-The controller has passed compilation, unit tests, PowerShell parsing, and a local Win32 hook smoke test. It has not yet been tested against a live authorized RDP session, including end-to-end recording and `--execute` replay.
+The controller has passed compilation, unit tests, PowerShell parsing, local `mstsc` window targeting, physical input recording, JSONL analysis, and dry-run replay. It has not yet been tested against a live authorized RDP session, including end-to-end recording and `--execute` replay.
