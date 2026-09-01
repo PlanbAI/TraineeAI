@@ -49,6 +49,20 @@ class NormalizeTests(unittest.TestCase):
         self.assertEqual(event.target["value"], "<REDACTED>")
         self.assertTrue(event.data["value_redacted"])
 
+    def test_normalizes_and_redacts_rdp_command(self):
+        event = normalize_desktop(
+            {
+                "timestamp": "2026-08-28T12:00:00Z",
+                "type": "rdp.command_submitted",
+                "application": {"name": "mstsc.exe", "pid": 42},
+                "window": {"title": "server-01 - Remote Desktop"},
+                "terminal": {"shell": "powershell", "command": "set api_token=secret-value"},
+            }
+        )
+
+        self.assertEqual(event.target["command"], "<REDACTED_COMMAND>")
+        self.assertTrue(event.data["value_redacted"])
+
 
 class EpisodeBuilderTests(unittest.TestCase):
     def test_keeps_cross_application_events_with_shared_entity_in_one_episode(self):

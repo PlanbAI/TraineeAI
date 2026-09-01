@@ -64,10 +64,12 @@ def _redact_sensitive_target(element: dict | None) -> dict | None:
     target = dict(element)
     metadata = " ".join(
         str(target.get(key) or "")
-        for key in ("id", "name", "type", "autocomplete", "ariaLabel", "placeholder")
+        for key in ("id", "name", "type", "autocomplete", "ariaLabel", "placeholder", "command")
     )
     if str(target.get("type") or "").lower() == "hidden" or SENSITIVE_TARGET_RE.search(metadata):
         target["value"] = "<REDACTED>"
+        if "command" in target:
+            target["command"] = "<REDACTED_COMMAND>"
         target["valueRedacted"] = True
     return target
 
@@ -115,12 +117,19 @@ def normalize_desktop(event: dict) -> UnifiedEvent:
     timestamp, epoch = _parse_timestamp(event.get("timestamp"))
     application = event.get("application") or {}
     window = event.get("window") or {}
-    element = event.get("element") or None
+    element = event.get("element") or event.get("terminal") or None
+    element = _redact_sensitive_target(element)
 
     app_name = application.get("name") or event.get("process") or event.get("app")
     pid = application.get("pid") or event.get("pid")
     title = window.get("title") or event.get("title")
     event_type = event.get("type") or event.get("event_type") or "desktop.unknown"
+
+    data = {}
+    if event.get("input"):
+        data["input"] = event["input"]
+    if element and (element.get("content_redacted") or element.get("valueRedacted")):
+        data["value_redacted"] = True
 
     entities = _entity_values(title, element)
 
@@ -133,6 +142,7 @@ def normalize_desktop(event: dict) -> UnifiedEvent:
         pid=pid,
         window_title=title,
         target=element,
+        data=data,
         entities=entities,
         raw=event,
     )

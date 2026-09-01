@@ -19,12 +19,16 @@ Trainee/
 |  |- BrowserCollector.py
 |  |- LinuxCollector.py
 |  |- WindowsCollector.py
+|  |- WindowsRdpCollector.py
+|  `- WindowsRdpReplay.py
 |  |- watcher_x11.py
 |  `- watcher_x11_gi.py
 |- scripts/
 |  |- run_analysis_test.sh
 |  |- run_browser_collector.ps1
 |  |- run_browser_collector.sh
+|  |- run_rdp_recorder.ps1
+|  |- run_rdp_replay.ps1
 |  |- run_capture.sh
 |  `- run_full_test.sh
 |- docs/

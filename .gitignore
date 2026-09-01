@@ -4,4 +4,5 @@ __pycache__/
 *.py[cod]
 browser-events.jsonl
 events.jsonl
+rdp-events.jsonl
 test-output/

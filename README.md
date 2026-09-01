@@ -121,6 +121,36 @@ In the second window, start the browser collector and its dedicated Chrome, Chro
 
 Perform the workflow in the browser window started by the script. Stop both collectors with Ctrl+C, then run the manual analysis command below. The Windows desktop collector records foreground-window changes only: application name, executable path, PID, window class, title, and window ID. It does not yet collect Windows UI Automation control-level events.
 
+### Windows RDP Recording And Replay
+
+The RDP alpha records input only for one explicitly selected Microsoft Remote Desktop (`mstsc.exe`) window. Start recording after signing in to the remote system and stop it before entering credentials or secrets.
+
+```powershell
+.\scripts\run_rdp_recorder.ps1 -WindowTitle "server-01" -Shell powershell -Output rdp-events.jsonl
+```
+
+`Ctrl+Shift+F12` pauses or resumes recording. `Ctrl+Shift+F11` stops it. The recorder stores raw physical input for replay and creates `rdp.command_submitted` events when Enter is pressed. Clipboard contents are never read; pasted commands cannot be replayed automatically.
+
+Analyze the resulting log with:
+
+```powershell
+python -m analysis.analyze --desktop rdp-events.jsonl --output test-output\rdp-episodes.jsonl --timeline-output test-output\rdp-timeline.jsonl
+```
+
+Replay is dry-run by default and requires the target RDP window to be focused and have the same client size as the recording:
+
+```powershell
+.\scripts\run_rdp_replay.ps1 -Scenario rdp-events.jsonl -WindowTitle "server-01"
+```
+
+After verifying the dry run, send input only to an authorized test session:
+
+```powershell
+.\scripts\run_rdp_replay.ps1 -Scenario rdp-events.jsonl -WindowTitle "server-01" -Execute -CheckpointBefore
+```
+
+See [RDP recorder requirements](docs/rdp-recorder-requirements.md) for privacy boundaries and known limits.
+
 ### Manual Analysis
 
 Existing collector logs can be analyzed without starting collectors:

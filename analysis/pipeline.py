@@ -227,6 +227,8 @@ def build_candidate_episodes(events: list[UnifiedEvent]) -> list[Episode]:
                 action["target"] = e.target
             if e.entities:
                 action["entities"] = e.entities
+            if e.data:
+                action["data"] = e.data
             actions.append(action)
 
         first, last = episode_events[0], episode_events[-1]
