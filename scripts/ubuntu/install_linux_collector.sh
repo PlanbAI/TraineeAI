@@ -14,8 +14,6 @@ sudo apt-get install -y \
   at-spi2-core \
   gir1.2-atspi-2.0 \
   python3-gi \
-  python3-requests \
-  python3-websocket \
   python3-xlib \
   chromium-browser
 

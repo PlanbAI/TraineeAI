@@ -64,7 +64,6 @@ export CDP_PORT
 
 [[ -f "$COLLECTOR" ]] || { echo "ERROR: Browser collector not found: $COLLECTOR" >&2; exit 2; }
 command -v "$PYTHON_BIN" >/dev/null 2>&1 || { echo "ERROR: Python not found: $PYTHON_BIN" >&2; exit 3; }
-"$PYTHON_BIN" -c 'import requests, websocket' || { echo "ERROR: requests and websocket-client are required." >&2; exit 4; }
 
 if ! cdp_ready; then
   CHROME_EXEC="$(find_chrome)" || { echo "ERROR: Chrome/Chromium was not found." >&2; exit 5; }

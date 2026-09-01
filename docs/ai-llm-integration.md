@@ -178,6 +178,10 @@ for line in Path("test-output/llm-payloads.jsonl").read_text(encoding="utf-8").s
 
 The host application is responsible for authentication, transport encryption, provider selection, retention, user consent, rate limits, and validation of the model response. TraineeAI does not make a network request to an LLM.
 
+## Runtime Dependencies
+
+Windows collectors and the browser CDP collector use only the Python standard library, so they do not require `pip`. The Linux desktop collector needs native X11 and AT-SPI packages; install them through `scripts/ubuntu/install_linux_collector.sh`, which uses Ubuntu's `apt-get` package manager.
+
 ## Human Review And Automation
 
 Treat model output as a draft workflow description. Before exporting a workflow or replaying an RDP scenario, require a reviewer to confirm:

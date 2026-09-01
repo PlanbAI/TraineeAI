@@ -37,7 +37,6 @@ Run these commands in PowerShell. The two collector commands run in separate Pow
 ```powershell
 git clone --branch aplha-version https://github.com/PlanbAI/TraineeAI.git
 cd TraineeAI
-py -m pip install -r requirements.txt
 python .\collectors\WindowsCollector.py
 ```
 
@@ -65,6 +64,8 @@ Password fields and fields whose metadata indicates common sensitive data, such 
 - Python 3.
 - Chromium or Google Chrome. Ubuntu's Snap Chromium is supported.
 - A local terminal session, not SSH or a headless server.
+
+Windows collectors and the browser CDP collector use only the Python standard library. No `pip` installation is required. On Ubuntu, the installer uses `apt-get` to install the native X11, AT-SPI, and Chromium packages required by the Linux desktop collector.
 
 The installer installs the required system dependencies:
 

@@ -65,11 +65,6 @@ if (-not $PythonBin) {
 }
 
 try {
-    & $PythonBin -c "import requests, websocket"
-    if ($LASTEXITCODE -ne 0) {
-        throw "Python dependencies are unavailable: requests and websocket-client are required."
-    }
-
     if (-not (Test-CdpReady)) {
         $ChromeBin = Find-Chrome $ChromeBin
         New-Item -ItemType Directory -Force -Path $ProfileDirectory | Out-Null

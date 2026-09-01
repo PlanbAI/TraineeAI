@@ -38,7 +38,6 @@ Trainee/
 |- tests/
 |  `- test_preprocessing.py
 |- browser_listener.js
-|- requirements.txt
 |- .idea/
 |- .venv/
 `- .git/
@@ -54,7 +53,7 @@ Trainee/
 - `collectors/WindowsRdpCollector.py` records input for one explicitly selected `mstsc.exe` window, and `collectors/WindowsRdpReplay.py` provides guarded replay.
 - `analysis/` normalizes both logs, enriches the unified timeline, reduces input noise, segments sessions and builds candidate episodes.
 - `scripts/` provides manual capture and end-to-end analysis commands.
-- `requirements.txt` lists Python dependencies, including Linux-only X11 and AT-SPI bindings.
+- Windows and browser collectors use only the Python standard library. The Ubuntu installer installs native X11 and AT-SPI packages with `apt-get`.
 
 ## Service Directories
 
