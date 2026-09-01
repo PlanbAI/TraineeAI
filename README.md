@@ -32,21 +32,15 @@ See [AI/LLM Integration Guide](docs/ai-llm-integration.md) for artifact contract
 
 ### Windows
 
-Run these commands in PowerShell. The two collector commands run in separate PowerShell windows.
+Run these commands in PowerShell. One launcher starts the Windows desktop, browser, and waiting RDP collectors.
 
 ```powershell
 git clone --branch aplha-version https://github.com/PlanbAI/TraineeAI.git
 cd TraineeAI
-python .\collectors\WindowsCollector.py
+.\scripts\run_windows_collectors.ps1
 ```
 
-In a second PowerShell window opened in the same repository, run:
-
-```powershell
-.\scripts\run_browser_collector.ps1
-```
-
-When the workflow is complete, stop both collectors with Ctrl+C and run the manual analysis command in [Manual Analysis](#manual-analysis).
+When the workflow is complete, stop all collectors with Ctrl+C and run the manual analysis command in [Manual Analysis](#manual-analysis).
 
 ## What Is Captured
 
@@ -114,19 +108,13 @@ This writes `browser-events.jsonl` in the repository root. To connect to an alre
 
 ### Windows Capture
 
-Open two PowerShell windows in the repository root. In the first window, start the Windows desktop collector:
+From the repository root, start the Windows desktop collector, the browser collector with its dedicated Chrome, Chromium, or Edge profile, and the waiting RDP collector:
 
 ```powershell
-python .\collectors\WindowsCollector.py
+.\scripts\run_windows_collectors.ps1
 ```
 
-In the second window, start the browser collector and its dedicated Chrome, Chromium, or Edge profile:
-
-```powershell
-.\scripts\run_browser_collector.ps1
-```
-
-Perform the workflow in the browser window started by the script. Stop both collectors with Ctrl+C, then run the manual analysis command below. The Windows desktop collector records foreground-window changes only: application name, executable path, PID, window class, title, and window ID. It does not yet collect Windows UI Automation control-level events.
+Perform the workflow in the browser window started by the script. Stop all collectors with Ctrl+C, then run the manual analysis command below. Pass `-DurationSeconds 60` for an automatic stop. The RDP collector waits until an `mstsc.exe` window becomes active, selects that window, and records only its input. Start the launcher only after RDP authentication and do not enter secrets while recording. The Windows desktop collector records foreground-window changes only: application name, executable path, PID, window class, title, and window ID. It does not yet collect Windows UI Automation control-level events.
 
 ### Windows RDP Recording And Replay
 

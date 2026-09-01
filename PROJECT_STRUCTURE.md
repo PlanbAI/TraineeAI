@@ -26,6 +26,7 @@ Trainee/
 |- scripts/
 |  |- run_analysis_test.sh
 |  |- run_browser_collector.ps1
+|  |- run_windows_collectors.ps1
 |  |- run_browser_collector.sh
 |  |- run_rdp_recorder.ps1
 |  |- run_rdp_replay.ps1

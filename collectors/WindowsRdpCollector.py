@@ -105,10 +105,11 @@ def window_context(hwnd: int) -> dict | None:
 
 
 class RdpRecorder:
-    def __init__(self, output: Path, title_substring: str, shell: str):
+    def __init__(self, output: Path, title_substring: str | None, shell: str):
         self.output = output
-        self.title_substring = title_substring.casefold()
+        self.title_substring = title_substring.casefold() if title_substring else None
         self.shell = shell
+        self.target_window_id: int | None = None
         self.command_buffer: list[str] = []
         self.paused = False
         self.paste_key_active = False
@@ -125,8 +126,12 @@ class RdpRecorder:
         context = window_context(self.user32.GetForegroundWindow())
         if not context or (context["process"] or "").casefold() != "mstsc.exe":
             return None
-        if self.title_substring not in context["title"].casefold():
+        if self.target_window_id is not None:
+            return context if context["id"] == self.target_window_id else None
+        if self.title_substring and self.title_substring not in context["title"].casefold():
             return None
+        self.target_window_id = context["id"]
+        print(f"RDP window selected: {context['title']}", flush=True)
         return context
 
     def emit(self, event_type: str, context: dict, **extra: object) -> None:
@@ -292,15 +297,20 @@ class RdpRecorder:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Record input for one selected mstsc RDP window.")
-    parser.add_argument("--window-title", required=True, help="Required substring of the selected RDP window title")
+    selection = parser.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--window-title", help="Required substring of the selected RDP window title")
+    selection.add_argument("--auto-select", action="store_true", help="Select the first mstsc window made active")
     parser.add_argument("--output", type=Path, default=Path("rdp-events.jsonl"))
     parser.add_argument("--shell", choices=("unknown", "powershell", "bash"), default="unknown")
     args = parser.parse_args()
     if sys.platform != "win32":
         parser.error("WindowsRdpCollector.py must run on Windows")
-    if not args.window_title.strip():
+    if args.window_title is not None and not args.window_title.strip():
         parser.error("--window-title must not be blank")
-    print("RDP capture records keyboard and mouse input only for the selected mstsc window.")
+    if args.auto_select:
+        print("Waiting for an active mstsc window to select.")
+    else:
+        print("RDP capture records keyboard and mouse input only for the selected mstsc window.")
     print("Do not record passwords, tokens, or other secrets.")
     RdpRecorder(args.output, args.window_title, args.shell).run()
 
