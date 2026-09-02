@@ -28,7 +28,7 @@ Results are written to `test-output/`:
 
 Run analysis with `--llm-payload-output` to create one grounded, schema-constrained LLM request per candidate episode. The recommended workflow is to send `llm-payloads.jsonl`, not raw keyboard, mouse, browser, or RDP logs, to an AI system.
 
-See [AI/LLM Integration Guide](docs/ai-llm-integration.md) for artifact contracts, prompting rules, redaction boundaries, RDP-specific interpretation, and human-review requirements.
+See [Functional Requirements](docs/functional-requirements.md) for implemented product behavior and [AI/LLM Integration Guide](docs/ai-llm-integration.md) for artifact contracts, prompting rules, redaction boundaries, RDP-specific interpretation, and human-review requirements.
 
 ### Windows
 

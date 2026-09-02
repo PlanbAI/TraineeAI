@@ -34,11 +34,13 @@ Trainee/
 |  `- run_full_test.sh
 |- docs/
 |  |- ai-llm-integration.md
+|  |- functional-requirements.md
 |  |- rdp-recorder-requirements.md
 |  `- ubuntu-virtualbox-test.md
 |- tests/
 |  `- test_preprocessing.py
 |- browser_listener.js
+|- AGENTS.md
 |- .idea/
 |- .venv/
 `- .git/
