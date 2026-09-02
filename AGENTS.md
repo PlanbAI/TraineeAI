@@ -16,19 +16,19 @@ Before running collectors, inspect the operating system, Python availability, re
 
 ### Windows
 
-From the repository root, run all standard Windows collectors with:
+From the repository root, start all standard Windows collectors in the background without PowerShell with:
 
-```powershell
-.\scripts\run_windows_collectors.ps1
+```bat
+scripts\start_windows_collectors.cmd
 ```
 
-- The launcher starts desktop, browser, and waiting RDP collectors; `Ctrl+C` stops all of them.
+- The launcher starts desktop, browser, and waiting RDP collectors. Stop them with `scripts\stop_windows_collectors.cmd`.
+- Inspect `windows-collectors.log` if the background launcher fails or a collector stops unexpectedly.
 - It uses `.venv\Scripts\python.exe` when present, otherwise `python` from `PATH`.
-- The browser launcher finds Chrome or Edge automatically. If it cannot, provide the installed executable through `-ChromeBin`.
-- If PowerShell blocks script execution, use a process-only policy change, then retry:
+- The browser launcher finds Chrome or Edge automatically. If it cannot, pass the installed executable through `--chrome-bin` to `scripts\start_windows_collectors.cmd`.
+- For an interactive PowerShell session, use:
 
 ```powershell
-Set-ExecutionPolicy -Scope Process Bypass
 .\scripts\run_windows_collectors.ps1
 ```
 
@@ -71,7 +71,7 @@ bash -n scripts/run_browser_collector.sh scripts/run_full_test.sh
 When a launch, collector, dependency, browser discovery, PowerShell policy, or platform check fails:
 
 1. Report the exact failing command, error text, operating system/version, Python version, and relevant collector log or stack trace.
-2. Apply only a documented, low-risk remedy that matches the error, such as passing `-ChromeBin` or using the process-only PowerShell execution policy above.
+2. Apply only a documented, low-risk remedy that matches the error, such as passing `--chrome-bin` to `run_windows_collectors.py` or using the interactive PowerShell launcher.
 3. If the problem remains, or the required behavior is unsupported, explicitly offer to create a bug report or change request. Do not create an external issue unless the user asks.
 4. A proposed bug/change request must include reproduction steps, expected and actual behavior, environment details, sanitized diagnostics, and a link to the applicable functional requirement when one exists.
 

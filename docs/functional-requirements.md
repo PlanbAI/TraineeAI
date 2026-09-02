@@ -14,8 +14,8 @@ This document lists only functionality implemented in the current alpha release.
 
 ## Windows Capture / Сбор в Windows
 
-- **FR-03.** `scripts/run_windows_collectors.ps1` starts the Windows desktop collector, browser collector, and waiting RDP collector with one PowerShell command. `Ctrl+C` stops all of them.
-- **FR-03.** `scripts/run_windows_collectors.ps1` запускает коллекторы Windows desktop, браузера и ожидающий RDP-коллектор одной командой PowerShell. `Ctrl+C` останавливает их все.
+- **FR-03.** `scripts/start_windows_collectors.cmd` starts the Windows desktop collector, browser collector, and waiting RDP collector in the background without PowerShell. `scripts/stop_windows_collectors.cmd` stops that set of collectors.
+- **FR-03.** `scripts/start_windows_collectors.cmd` запускает коллекторы Windows desktop, браузера и ожидающий RDP-коллектор в фоновом режиме без PowerShell. `scripts/stop_windows_collectors.cmd` останавливает этот набор коллекторов.
 
 - **FR-04.** The Windows desktop collector writes foreground-window changes to `events.jsonl`, including application name, executable path, PID, window class, title, and window ID.
 - **FR-04.** Windows desktop-коллектор записывает изменения активного окна в `events.jsonl`: имя приложения, путь к исполняемому файлу, PID, класс, заголовок и ID окна.
