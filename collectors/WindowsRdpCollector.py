@@ -31,6 +31,7 @@ WM_MOUSEWHEEL = 0x020A
 WM_QUIT = 0x0012
 LLKHF_INJECTED = 0x10
 LLMHF_INJECTED = 0x00000001
+LRESULT = ctypes.c_ssize_t
 VK_BACK = 0x08
 VK_RETURN = 0x0D
 VK_CONTROL = 0x11
@@ -133,6 +134,14 @@ class RdpRecorder:
         self.target_window_id = context["id"]
         print(f"RDP window selected: {context['title']}", flush=True)
         return context
+
+    def forward_event(self, hook: int, code: int, message: int, data: int) -> int:
+        try:
+            return self.user32.CallNextHookEx(hook, code, message, data)
+        except Exception as error:
+            print(f"Unable to forward hook event: {error}", file=sys.stderr, flush=True)
+            # Returning zero tells Windows that this hook did not handle the event.
+            return 0
 
     def emit(self, event_type: str, context: dict, **extra: object) -> None:
         event = {
@@ -237,6 +246,13 @@ class RdpRecorder:
                 self.command_buffer.append(self.key_text(key.vkCode, key.scanCode))
         return self.user32.CallNextHookEx(self.keyboard_hook, code, message, data)
 
+    def safe_keyboard_proc(self, code: int, message: int, data: int) -> int:
+        try:
+            return self.keyboard_proc(code, message, data)
+        except Exception as error:
+            print(f"Keyboard hook error: {error}", file=sys.stderr, flush=True)
+            return self.forward_event(self.keyboard_hook, code, message, data)
+
     def mouse_proc(self, code: int, message: int, data: int) -> int:
         if code != HC_ACTION or self.paused:
             return self.user32.CallNextHookEx(self.mouse_hook, code, message, data)
@@ -270,15 +286,23 @@ class RdpRecorder:
             self.emit("rdp.input", context, input={"kind": kind, "detail": detail, "x": point.x, "y": point.y})
         return self.user32.CallNextHookEx(self.mouse_hook, code, message, data)
 
+    def safe_mouse_proc(self, code: int, message: int, data: int) -> int:
+        try:
+            return self.mouse_proc(code, message, data)
+        except Exception as error:
+            print(f"Mouse hook error: {error}", file=sys.stderr, flush=True)
+            return self.forward_event(self.mouse_hook, code, message, data)
+
     def run(self) -> None:
-        hook_type = ctypes.WINFUNCTYPE(ctypes.c_ssize_t, ctypes.c_int, wintypes.WPARAM, wintypes.LPARAM)
-        self.keyboard_callback = hook_type(self.keyboard_proc)
-        self.mouse_callback = hook_type(self.mouse_proc)
+        hook_type = ctypes.WINFUNCTYPE(LRESULT, ctypes.c_int, wintypes.WPARAM, wintypes.LPARAM)
+        self.keyboard_callback = hook_type(self.safe_keyboard_proc)
+        self.mouse_callback = hook_type(self.safe_mouse_proc)
         self.kernel32.GetModuleHandleW.argtypes = (wintypes.LPCWSTR,)
         self.kernel32.GetModuleHandleW.restype = ctypes.c_void_p
         self.user32.SetWindowsHookExW.argtypes = (ctypes.c_int, hook_type, ctypes.c_void_p, wintypes.DWORD)
         self.user32.SetWindowsHookExW.restype = ctypes.c_void_p
-        self.user32.CallNextHookEx.restype = ctypes.c_ssize_t
+        self.user32.CallNextHookEx.argtypes = (ctypes.c_void_p, ctypes.c_int, wintypes.WPARAM, wintypes.LPARAM)
+        self.user32.CallNextHookEx.restype = LRESULT
         module = self.kernel32.GetModuleHandleW(None)
         self.keyboard_hook = self.user32.SetWindowsHookExW(WH_KEYBOARD_LL, self.keyboard_callback, module, 0)
         self.mouse_hook = self.user32.SetWindowsHookExW(WH_MOUSE_LL, self.mouse_callback, module, 0)
