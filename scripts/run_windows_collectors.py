@@ -218,6 +218,7 @@ def run_collectors(args: argparse.Namespace) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run Windows collectors in the background without PowerShell.")
+    parser.add_argument("--background", action="store_true", help="Detach the collector manager from the calling process")
     parser.add_argument("--stop", action="store_true", help="Stop collectors started by this launcher")
     parser.add_argument("--chrome-bin", help="Path to Chrome, Chromium, or Edge")
     parser.add_argument("--cdp-port", type=int, default=9222)
@@ -228,6 +229,24 @@ def main() -> int:
     parser.add_argument("--rdp-output", default="rdp-events.jsonl")
     parser.add_argument("--rdp-shell", choices=("unknown", "powershell", "bash"), default="unknown")
     args = parser.parse_args()
+    if args.background:
+        if args.stop:
+            parser.error("--background cannot be combined with --stop")
+        command = [sys.executable, str(Path(__file__).resolve())]
+        command.extend(argument for argument in sys.argv[1:] if argument != "--background")
+        subprocess.Popen(
+            command,
+            cwd=ROOT_DIR,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            creationflags=(
+                getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+                | getattr(subprocess, "DETACHED_PROCESS", 0)
+            ),
+        )
+        return 0
     if args.stop:
         return stop_collectors()
     if args.duration_seconds < 0:

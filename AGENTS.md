@@ -22,7 +22,7 @@ From the repository root, start all standard Windows collectors in the backgroun
 scripts\start_windows_collectors.cmd
 ```
 
-- The launcher starts desktop, browser, and waiting RDP collectors. Stop them with `scripts\stop_windows_collectors.cmd`.
+- The launcher starts desktop, browser, and waiting RDP collectors, then returns immediately without blocking OpenCode. Stop them with `scripts\stop_windows_collectors.cmd`.
 - Inspect `windows-collectors.log` if the background launcher fails or a collector stops unexpectedly.
 - It uses `.venv\Scripts\python.exe` when present, otherwise `python` from `PATH`.
 - The browser launcher finds Chrome or Edge automatically. If it cannot, pass the installed executable through `--chrome-bin` to `scripts\start_windows_collectors.cmd`.

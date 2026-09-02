@@ -17,7 +17,7 @@ if not exist "%PYTHON_BIN%" (
     )
 )
 
-start "TraineeAI collectors" /b "%PYTHON_BIN%" "%ROOT_DIR%\scripts\run_windows_collectors.py" %*
+"%PYTHON_BIN%" "%ROOT_DIR%\scripts\run_windows_collectors.py" --background %*
 if errorlevel 1 (
     echo ERROR: Unable to start collectors.
     exit /b 1
