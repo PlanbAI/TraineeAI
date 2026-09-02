@@ -22,7 +22,7 @@ From the repository root, start all standard Windows collectors in the backgroun
 scripts\start_windows_collectors.cmd
 ```
 
-- The launcher starts desktop, browser, and waiting RDP collectors, then returns immediately without blocking OpenCode. Stop them with `scripts\stop_windows_collectors.cmd`.
+- The launcher starts desktop, browser, and waiting RDP and CyberArk collectors, then returns immediately without blocking OpenCode. Stop them with `scripts\stop_windows_collectors.cmd`.
 - Inspect `windows-collectors.log` if the background launcher fails or a collector stops unexpectedly.
 - It uses `.venv\Scripts\python.exe` when present, otherwise `python` from `PATH`.
 - The browser launcher finds Chrome or Edge automatically. If it cannot, pass the installed executable through `--chrome-bin` to `scripts\start_windows_collectors.cmd`.
@@ -35,6 +35,7 @@ scripts\start_windows_collectors.cmd
 - The RDP recorder observes physical keyboard and mouse input. For RDP capture, start the launcher only after RDP authentication and stop it before entering passwords, tokens, or other secrets.
 - RDP collection logs only button-down mouse coordinates by default. Pass `--record-mouse-moves` to `scripts\start_windows_collectors.cmd` only when detailed mouse movement is required.
 - For keyboard-capture diagnostics, pass `--record-injected-key-events` to `scripts\start_windows_collectors.cmd`; it does not allow clipboard capture.
+- The CyberArk collector waits for common PSM client processes and writes `cyberark-events.jsonl` only for its selected window. Pass `--cyberark-process-name client.exe` when CyberArk uses another executable.
 - Do not run replay with `-Execute` unless the user explicitly authorizes the target test session.
 
 ### Ubuntu

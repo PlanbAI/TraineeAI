@@ -132,8 +132,9 @@ def run_collectors(args: argparse.Namespace) -> int:
 
     desktop_collector = ROOT_DIR / "collectors" / "WindowsCollector.py"
     rdp_collector = ROOT_DIR / "collectors" / "WindowsRdpCollector.py"
+    cyberark_collector = ROOT_DIR / "collectors" / "WindowsCyberArkCollector.py"
     browser_collector = ROOT_DIR / "collectors" / "BrowserCollector.py"
-    for collector in (desktop_collector, rdp_collector, browser_collector):
+    for collector in (desktop_collector, rdp_collector, cyberark_collector, browser_collector):
         if not collector.is_file():
             raise RuntimeError(f"Collector was not found: {collector}")
 
@@ -169,6 +170,12 @@ def run_collectors(args: argparse.Namespace) -> int:
                 environment,
                 output,
             ))
+            cyberark_arguments = [sys.executable, str(cyberark_collector), "--output", args.cyberark_output, "--shell", args.cyberark_shell]
+            for process_name in args.cyberark_process_name:
+                cyberark_arguments.extend(("--process-name", process_name))
+            if args.record_mouse_moves:
+                cyberark_arguments.append("--record-mouse-moves")
+            processes.append(start_process(cyberark_arguments, environment, output))
             time.sleep(1)
             if any(process.poll() is not None for process in processes):
                 raise RuntimeError(f"A collector exited immediately. See {LOG_FILE}")
@@ -199,7 +206,12 @@ def run_collectors(args: argparse.Namespace) -> int:
 
         state = {
             "manager_pid": os.getpid(),
-            "processes": [{"name": "desktop", "pid": processes[0].pid}, {"name": "rdp", "pid": processes[1].pid}, {"name": "browser", "pid": processes[2].pid}],
+            "processes": [
+                {"name": "desktop", "pid": processes[0].pid},
+                {"name": "rdp", "pid": processes[1].pid},
+                {"name": "cyberark", "pid": processes[2].pid},
+                {"name": "browser", "pid": processes[3].pid},
+            ],
         }
         if started_browser:
             state["processes"].append({"name": "cdp_browser", "pid": started_browser.pid})
@@ -233,6 +245,9 @@ def main() -> int:
     parser.add_argument("--desktop-interval", type=float, default=0.2)
     parser.add_argument("--rdp-output", default="rdp-events.jsonl")
     parser.add_argument("--rdp-shell", choices=("unknown", "powershell", "bash"), default="unknown")
+    parser.add_argument("--cyberark-output", default="cyberark-events.jsonl")
+    parser.add_argument("--cyberark-shell", choices=("unknown", "powershell", "bash"), default="unknown")
+    parser.add_argument("--cyberark-process-name", action="append", default=[])
     parser.add_argument("--record-mouse-moves", action="store_true")
     parser.add_argument("--record-injected-key-events", action="store_true")
     args = parser.parse_args()

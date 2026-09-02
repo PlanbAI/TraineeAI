@@ -2,6 +2,7 @@ import ctypes
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from collectors.WindowsRdpCollector import (
     HC_ACTION,
@@ -91,3 +92,18 @@ class RdpMouseRecordingTests(unittest.TestCase):
 
         self.assertEqual(disabled_events, [])
         self.assertEqual(enabled_events[0]["kind"], "key")
+
+    def test_accepts_configured_cyberark_client_process(self):
+        recorder = RdpRecorder(
+            Path("unused.jsonl"),
+            None,
+            "unknown",
+            False,
+            True,
+            ("psmrdp.exe",),
+        )
+        recorder.user32 = type("User32", (), {"GetForegroundWindow": staticmethod(lambda: 1)})()
+        context = {"id": 1, "pid": 2, "title": "CyberArk session", "process": "PsmRdp.exe", "client_size": {"width": 1, "height": 1}}
+
+        with patch("collectors.WindowsRdpCollector.window_context", return_value=context):
+            self.assertEqual(recorder.target_context(), context)

@@ -70,3 +70,6 @@ This document lists only functionality implemented in the current alpha release.
 
 - **FR-19.** Injected keyboard events are ignored by default. `--record-injected-key-events` enables their logging for diagnostics without reading clipboard contents.
 - **FR-19.** Инъецированные события клавиатуры по умолчанию игнорируются. `--record-injected-key-events` включает их логирование для диагностики без чтения содержимого буфера обмена.
+
+- **FR-20.** The Windows launchers start a waiting CyberArk collector. It selects one active configured CyberArk PSM client window, records its input to `cyberark-events.jsonl`, and accepts injected keyboard events for diagnostics by default.
+- **FR-20.** Windows-лаунчеры запускают ожидающий CyberArk-коллектор. Он выбирает одно активное настроенное окно клиента CyberArk PSM, записывает его ввод в `cyberark-events.jsonl` и по умолчанию принимает injected-события клавиатуры для диагностики.

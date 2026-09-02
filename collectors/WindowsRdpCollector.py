@@ -106,12 +106,21 @@ def window_context(hwnd: int) -> dict | None:
 
 
 class RdpRecorder:
-    def __init__(self, output: Path, title_substring: str | None, shell: str, record_mouse_moves: bool, record_injected_key_events: bool):
+    def __init__(
+        self,
+        output: Path,
+        title_substring: str | None,
+        shell: str,
+        record_mouse_moves: bool,
+        record_injected_key_events: bool,
+        process_names: tuple[str, ...] = ("mstsc.exe",),
+    ):
         self.output = output
         self.title_substring = title_substring.casefold() if title_substring else None
         self.shell = shell
         self.record_mouse_moves = record_mouse_moves
         self.record_injected_key_events = record_injected_key_events
+        self.process_names = {process_name.casefold() for process_name in process_names}
         self.target_window_id: int | None = None
         self.command_buffer: list[str] = []
         self.paused = False
@@ -127,7 +136,7 @@ class RdpRecorder:
 
     def target_context(self) -> dict | None:
         context = window_context(self.user32.GetForegroundWindow())
-        if not context or (context["process"] or "").casefold() != "mstsc.exe":
+        if not context or (context["process"] or "").casefold() not in self.process_names:
             return None
         if self.target_window_id is not None:
             return context if context["id"] == self.target_window_id else None

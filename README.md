@@ -32,7 +32,7 @@ See [Functional Requirements](docs/functional-requirements.md) for implemented p
 
 ### Windows
 
-Run these commands in Command Prompt to start the Windows desktop, browser, and waiting RDP collectors in the background without PowerShell.
+Run these commands in Command Prompt to start the Windows desktop, browser, and waiting RDP and CyberArk collectors in the background without PowerShell.
 
 ```bat
 git clone --branch aplha-version https://github.com/PlanbAI/TraineeAI.git
@@ -108,7 +108,7 @@ This writes `browser-events.jsonl` in the repository root. To connect to an alre
 
 ### Windows Capture
 
-From the repository root, start the Windows desktop collector, the browser collector with its dedicated Chrome, Chromium, or Edge profile, and the waiting RDP collector in the background without PowerShell:
+From the repository root, start the Windows desktop collector, the browser collector with its dedicated Chrome, Chromium, or Edge profile, and the waiting RDP and CyberArk collectors in the background without PowerShell:
 
 ```bat
 scripts\start_windows_collectors.cmd
@@ -119,6 +119,8 @@ Perform the workflow in the browser window started by the script. Stop the colle
 RDP mouse movement is not logged by default. To restore detailed mouse movement logging, add `--record-mouse-moves` to `scripts\start_windows_collectors.cmd` or `-RecordMouseMoves` to either PowerShell RDP launcher.
 
 For a keyboard-capture diagnostic, add `--record-injected-key-events` to `scripts\start_windows_collectors.cmd` or `-RecordInjectedKeyEvents` to either PowerShell RDP launcher. This records synthetic keyboard events that are normally ignored; it does not read clipboard contents.
+
+The CyberArk collector writes `cyberark-events.jsonl` only after it selects an active PSM client window. It waits for common PSM executable names by default. If the client uses another executable, pass `--cyberark-process-name client.exe` to `scripts\start_windows_collectors.cmd` or run `scripts\run_cyberark_recorder.ps1 -ProcessName client.exe`.
 
 ### Windows RDP Recording And Replay
 

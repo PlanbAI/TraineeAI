@@ -17,6 +17,7 @@ Trainee/
 |- collectors/
 |  |- __init__.py
 |  |- BrowserCollector.py
+|  |- WindowsCyberArkCollector.py
 |  |- LinuxCollector.py
 |  |- WindowsCollector.py
 |  |- WindowsRdpCollector.py
@@ -26,6 +27,7 @@ Trainee/
 |- scripts/
 |  |- run_analysis_test.sh
 |  |- run_browser_collector.ps1
+|  |- run_cyberark_recorder.ps1
 |  |- run_windows_collectors.ps1
 |  |- run_windows_collectors.py
 |  |- start_windows_collectors.cmd

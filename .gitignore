@@ -5,6 +5,7 @@ __pycache__/
 browser-events.jsonl
 events.jsonl
 rdp-events.jsonl
+cyberark-events.jsonl
 windows-collectors-state.json
 windows-collectors.log
 test-output/
