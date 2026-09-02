@@ -8,7 +8,8 @@ param(
     [double]$DesktopInterval = 0.2,
     [string]$RdpOutput = "rdp-events.jsonl",
     [ValidateSet("unknown", "powershell", "bash")]
-    [string]$RdpShell = "unknown"
+    [string]$RdpShell = "unknown",
+    [switch]$RecordMouseMoves
 )
 
 $ErrorActionPreference = "Stop"
@@ -42,7 +43,11 @@ try {
     Write-Host "Desktop events: $(Join-Path $rootDir $DesktopOutput)"
     Write-Host "RDP events: $(Join-Path $rootDir $RdpOutput)"
     $desktopProcess = Start-Process -FilePath $PythonBin -ArgumentList $desktopCollector, "--output", $DesktopOutput, "--interval", $DesktopInterval -WorkingDirectory $rootDir -PassThru -NoNewWindow
-    $rdpProcess = Start-Process -FilePath $PythonBin -ArgumentList $rdpCollector, "--auto-select", "--output", $RdpOutput, "--shell", $RdpShell -WorkingDirectory $rootDir -PassThru -NoNewWindow
+    $rdpArguments = @($rdpCollector, "--auto-select", "--output", $RdpOutput, "--shell", $RdpShell)
+    if ($RecordMouseMoves) {
+        $rdpArguments += "--record-mouse-moves"
+    }
+    $rdpProcess = Start-Process -FilePath $PythonBin -ArgumentList $rdpArguments -WorkingDirectory $rootDir -PassThru -NoNewWindow
     Start-Sleep -Seconds 1
     if ($desktopProcess.HasExited) {
         throw "Windows collector exited immediately with code $($desktopProcess.ExitCode)."

@@ -116,6 +116,8 @@ scripts\start_windows_collectors.cmd
 
 Perform the workflow in the browser window started by the script. Stop the collectors with `scripts\stop_windows_collectors.cmd`, then run the manual analysis command below. The RDP collector waits until an `mstsc.exe` window becomes active, selects that window, and records only its input. Start the launcher only after RDP authentication and do not enter secrets while recording. The Windows desktop collector records foreground-window changes only: application name, executable path, PID, window class, title, and window ID. It does not yet collect Windows UI Automation control-level events.
 
+RDP mouse movement is not logged by default. To restore detailed mouse movement logging, add `--record-mouse-moves` to `scripts\start_windows_collectors.cmd` or `-RecordMouseMoves` to either PowerShell RDP launcher.
+
 ### Windows RDP Recording And Replay
 
 The RDP alpha records input only for one explicitly selected Microsoft Remote Desktop (`mstsc.exe`) window. Start recording after signing in to the remote system and stop it before entering credentials or secrets.

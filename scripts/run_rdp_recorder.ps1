@@ -4,7 +4,8 @@ param(
     [ValidateSet("unknown", "powershell", "bash")]
     [string]$Shell = "unknown",
     [string]$Output = "rdp-events.jsonl",
-    [string]$PythonBin = "python"
+    [string]$PythonBin = "python",
+    [switch]$RecordMouseMoves
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,4 +18,8 @@ if (-not (Test-Path -LiteralPath $collector)) {
 
 Write-Host "Recording only while the selected mstsc window is active."
 Write-Host "Never record passwords, tokens, or other secrets."
-& $PythonBin $collector --window-title $WindowTitle --shell $Shell --output $Output
+$arguments = @($collector, "--window-title", $WindowTitle, "--shell", $Shell, "--output", $Output)
+if ($RecordMouseMoves) {
+    $arguments += "--record-mouse-moves"
+}
+& $PythonBin @arguments

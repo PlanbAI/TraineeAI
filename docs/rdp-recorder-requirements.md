@@ -9,6 +9,7 @@ TraineeAI records and replays input sent from a local Windows 10 or 11 machine t
 - Manual recording requires an RDP window-title substring.
 - The unified Windows launcher starts a waiting recorder that selects the first `mstsc.exe` window made active, then remains restricted to that window.
 - Only physical keyboard and mouse events while that selected `mstsc.exe` window is foreground are written.
+- Mouse movement is omitted by default. Coordinates are recorded for button-down events; `--record-mouse-moves` restores full mouse movement and coordinate logging.
 - `Ctrl+Shift+F12` pauses or resumes recording. `Ctrl+Shift+F11` stops it.
 - Replay is dry-run by default. Sending input requires an explicit `--execute` flag.
 - Replay stops when the selected RDP window loses focus. It can require a manual checkpoint before sending input.

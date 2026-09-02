@@ -106,10 +106,11 @@ def window_context(hwnd: int) -> dict | None:
 
 
 class RdpRecorder:
-    def __init__(self, output: Path, title_substring: str | None, shell: str):
+    def __init__(self, output: Path, title_substring: str | None, shell: str, record_mouse_moves: bool):
         self.output = output
         self.title_substring = title_substring.casefold() if title_substring else None
         self.shell = shell
+        self.record_mouse_moves = record_mouse_moves
         self.target_window_id: int | None = None
         self.command_buffer: list[str] = []
         self.paused = False
@@ -277,13 +278,18 @@ class RdpRecorder:
         if message in mapping:
             kind, detail = mapping[message]
             if kind == "move":
+                if not self.record_mouse_moves:
+                    return self.user32.CallNextHookEx(self.mouse_hook, code, message, data)
                 now = time.monotonic()
                 position = (point.x, point.y)
                 if position == self.last_mouse_position or now - self.last_mouse_move_at < 0.05:
                     return self.user32.CallNextHookEx(self.mouse_hook, code, message, data)
                 self.last_mouse_move_at = now
                 self.last_mouse_position = position
-            self.emit("rdp.input", context, input={"kind": kind, "detail": detail, "x": point.x, "y": point.y})
+            input_event = {"kind": kind, "detail": detail}
+            if self.record_mouse_moves or detail in ("left_down", "right_down", "middle_down"):
+                input_event.update({"x": point.x, "y": point.y})
+            self.emit("rdp.input", context, input=input_event)
         return self.user32.CallNextHookEx(self.mouse_hook, code, message, data)
 
     def safe_mouse_proc(self, code: int, message: int, data: int) -> int:
@@ -326,6 +332,7 @@ def main() -> None:
     selection.add_argument("--auto-select", action="store_true", help="Select the first mstsc window made active")
     parser.add_argument("--output", type=Path, default=Path("rdp-events.jsonl"))
     parser.add_argument("--shell", choices=("unknown", "powershell", "bash"), default="unknown")
+    parser.add_argument("--record-mouse-moves", action="store_true", help="Record mouse movement and all mouse coordinates")
     args = parser.parse_args()
     if sys.platform != "win32":
         parser.error("WindowsRdpCollector.py must run on Windows")
@@ -336,7 +343,7 @@ def main() -> None:
     else:
         print("RDP capture records keyboard and mouse input only for the selected mstsc window.")
     print("Do not record passwords, tokens, or other secrets.")
-    RdpRecorder(args.output, args.window_title, args.shell).run()
+    RdpRecorder(args.output, args.window_title, args.shell, args.record_mouse_moves).run()
 
 
 if __name__ == "__main__":

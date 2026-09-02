@@ -64,3 +64,6 @@ This document lists only functionality implemented in the current alpha release.
 
 - **FR-17.** Multi-session RDP capture, with a separate recorder for every RDP window, is not implemented.
 - **FR-17.** Многосессионный RDP-сбор с отдельным рекордером для каждого RDP-окна не реализован.
+
+- **FR-18.** By default, RDP capture records mouse coordinates only for button-down events and omits mouse-move events. `--record-mouse-moves` restores full mouse movement and coordinate logging.
+- **FR-18.** По умолчанию RDP-сбор записывает координаты мыши только для событий нажатия кнопки и не записывает движения мыши. `--record-mouse-moves` возвращает полное логирование движений и координат мыши.

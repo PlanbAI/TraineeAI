@@ -159,8 +159,11 @@ def run_collectors(args: argparse.Namespace) -> int:
                 environment,
                 output,
             ))
+            rdp_arguments = [sys.executable, str(rdp_collector), "--auto-select", "--output", args.rdp_output, "--shell", args.rdp_shell]
+            if args.record_mouse_moves:
+                rdp_arguments.append("--record-mouse-moves")
             processes.append(start_process(
-                [sys.executable, str(rdp_collector), "--auto-select", "--output", args.rdp_output, "--shell", args.rdp_shell],
+                rdp_arguments,
                 environment,
                 output,
             ))
@@ -228,6 +231,7 @@ def main() -> int:
     parser.add_argument("--desktop-interval", type=float, default=0.2)
     parser.add_argument("--rdp-output", default="rdp-events.jsonl")
     parser.add_argument("--rdp-shell", choices=("unknown", "powershell", "bash"), default="unknown")
+    parser.add_argument("--record-mouse-moves", action="store_true")
     args = parser.parse_args()
     if args.background:
         if args.stop:
