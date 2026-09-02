@@ -162,6 +162,8 @@ def run_collectors(args: argparse.Namespace) -> int:
             rdp_arguments = [sys.executable, str(rdp_collector), "--auto-select", "--output", args.rdp_output, "--shell", args.rdp_shell]
             if args.record_mouse_moves:
                 rdp_arguments.append("--record-mouse-moves")
+            if args.record_injected_key_events:
+                rdp_arguments.append("--record-injected-key-events")
             processes.append(start_process(
                 rdp_arguments,
                 environment,
@@ -232,6 +234,7 @@ def main() -> int:
     parser.add_argument("--rdp-output", default="rdp-events.jsonl")
     parser.add_argument("--rdp-shell", choices=("unknown", "powershell", "bash"), default="unknown")
     parser.add_argument("--record-mouse-moves", action="store_true")
+    parser.add_argument("--record-injected-key-events", action="store_true")
     args = parser.parse_args()
     if args.background:
         if args.stop:

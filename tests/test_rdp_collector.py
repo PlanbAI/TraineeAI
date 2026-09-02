@@ -6,6 +6,7 @@ from pathlib import Path
 from collectors.WindowsRdpCollector import (
     HC_ACTION,
     KBDLLHOOKSTRUCT,
+    LLKHF_INJECTED,
     MSLLHOOKSTRUCT,
     RdpRecorder,
     WM_KEYDOWN,
@@ -18,8 +19,8 @@ from collectors.WindowsRdpCollector import (
 
 @unittest.skipUnless(sys.platform == "win32", "Windows hook behavior is Windows-only")
 class RdpMouseRecordingTests(unittest.TestCase):
-    def recorder(self, record_mouse_moves: bool):
-        recorder = RdpRecorder(Path("unused.jsonl"), None, "unknown", record_mouse_moves)
+    def recorder(self, record_mouse_moves: bool, record_injected_key_events: bool = False):
+        recorder = RdpRecorder(Path("unused.jsonl"), None, "unknown", record_mouse_moves, record_injected_key_events)
         recorder.user32 = type("User32", (), {
             "CallNextHookEx": staticmethod(lambda *_: 0),
             "ScreenToClient": staticmethod(lambda *_: 1),
@@ -73,3 +74,20 @@ class RdpMouseRecordingTests(unittest.TestCase):
             "scan_code": 0x1E,
             "modifiers": {"ctrl": False, "shift": False, "alt": False},
         }])
+
+    def test_records_injected_keydown_only_when_enabled(self):
+        key = KBDLLHOOKSTRUCT()
+        key.vkCode = 0x41
+        key.scanCode = 0x1E
+        key.flags = LLKHF_INJECTED
+
+        disabled_recorder, disabled_events = self.recorder(record_mouse_moves=False)
+        disabled_recorder.keyboard_proc(HC_ACTION, WM_KEYDOWN, ctypes.addressof(key))
+
+        enabled_recorder, enabled_events = self.recorder(record_mouse_moves=False, record_injected_key_events=True)
+        enabled_recorder.modifier_state = lambda: {"ctrl": False, "shift": False, "alt": False}
+        enabled_recorder.key_text = lambda *_: "a"
+        enabled_recorder.keyboard_proc(HC_ACTION, WM_KEYDOWN, ctypes.addressof(key))
+
+        self.assertEqual(disabled_events, [])
+        self.assertEqual(enabled_events[0]["kind"], "key")

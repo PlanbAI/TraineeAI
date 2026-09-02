@@ -118,6 +118,8 @@ Perform the workflow in the browser window started by the script. Stop the colle
 
 RDP mouse movement is not logged by default. To restore detailed mouse movement logging, add `--record-mouse-moves` to `scripts\start_windows_collectors.cmd` or `-RecordMouseMoves` to either PowerShell RDP launcher.
 
+For a keyboard-capture diagnostic, add `--record-injected-key-events` to `scripts\start_windows_collectors.cmd` or `-RecordInjectedKeyEvents` to either PowerShell RDP launcher. This records synthetic keyboard events that are normally ignored; it does not read clipboard contents.
+
 ### Windows RDP Recording And Replay
 
 The RDP alpha records input only for one explicitly selected Microsoft Remote Desktop (`mstsc.exe`) window. Start recording after signing in to the remote system and stop it before entering credentials or secrets.

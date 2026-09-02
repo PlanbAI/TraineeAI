@@ -5,7 +5,8 @@ param(
     [string]$Shell = "unknown",
     [string]$Output = "rdp-events.jsonl",
     [string]$PythonBin = "python",
-    [switch]$RecordMouseMoves
+    [switch]$RecordMouseMoves,
+    [switch]$RecordInjectedKeyEvents
 )
 
 $ErrorActionPreference = "Stop"
@@ -21,5 +22,8 @@ Write-Host "Never record passwords, tokens, or other secrets."
 $arguments = @($collector, "--window-title", $WindowTitle, "--shell", $Shell, "--output", $Output)
 if ($RecordMouseMoves) {
     $arguments += "--record-mouse-moves"
+}
+if ($RecordInjectedKeyEvents) {
+    $arguments += "--record-injected-key-events"
 }
 & $PythonBin @arguments

@@ -9,7 +9,8 @@ param(
     [string]$RdpOutput = "rdp-events.jsonl",
     [ValidateSet("unknown", "powershell", "bash")]
     [string]$RdpShell = "unknown",
-    [switch]$RecordMouseMoves
+    [switch]$RecordMouseMoves,
+    [switch]$RecordInjectedKeyEvents
 )
 
 $ErrorActionPreference = "Stop"
@@ -46,6 +47,9 @@ try {
     $rdpArguments = @($rdpCollector, "--auto-select", "--output", $RdpOutput, "--shell", $RdpShell)
     if ($RecordMouseMoves) {
         $rdpArguments += "--record-mouse-moves"
+    }
+    if ($RecordInjectedKeyEvents) {
+        $rdpArguments += "--record-injected-key-events"
     }
     $rdpProcess = Start-Process -FilePath $PythonBin -ArgumentList $rdpArguments -WorkingDirectory $rootDir -PassThru -NoNewWindow
     Start-Sleep -Seconds 1

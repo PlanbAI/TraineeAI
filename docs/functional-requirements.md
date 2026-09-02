@@ -67,3 +67,6 @@ This document lists only functionality implemented in the current alpha release.
 
 - **FR-18.** By default, RDP capture records mouse coordinates only for button-down events and omits mouse-move events. `--record-mouse-moves` restores full mouse movement and coordinate logging.
 - **FR-18.** По умолчанию RDP-сбор записывает координаты мыши только для событий нажатия кнопки и не записывает движения мыши. `--record-mouse-moves` возвращает полное логирование движений и координат мыши.
+
+- **FR-19.** Injected keyboard events are ignored by default. `--record-injected-key-events` enables their logging for diagnostics without reading clipboard contents.
+- **FR-19.** Инъецированные события клавиатуры по умолчанию игнорируются. `--record-injected-key-events` включает их логирование для диагностики без чтения содержимого буфера обмена.

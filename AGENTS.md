@@ -34,6 +34,7 @@ scripts\start_windows_collectors.cmd
 
 - The RDP recorder observes physical keyboard and mouse input. For RDP capture, start the launcher only after RDP authentication and stop it before entering passwords, tokens, or other secrets.
 - RDP collection logs only button-down mouse coordinates by default. Pass `--record-mouse-moves` to `scripts\start_windows_collectors.cmd` only when detailed mouse movement is required.
+- For keyboard-capture diagnostics, pass `--record-injected-key-events` to `scripts\start_windows_collectors.cmd`; it does not allow clipboard capture.
 - Do not run replay with `-Execute` unless the user explicitly authorizes the target test session.
 
 ### Ubuntu

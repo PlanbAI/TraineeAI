@@ -106,11 +106,12 @@ def window_context(hwnd: int) -> dict | None:
 
 
 class RdpRecorder:
-    def __init__(self, output: Path, title_substring: str | None, shell: str, record_mouse_moves: bool):
+    def __init__(self, output: Path, title_substring: str | None, shell: str, record_mouse_moves: bool, record_injected_key_events: bool):
         self.output = output
         self.title_substring = title_substring.casefold() if title_substring else None
         self.shell = shell
         self.record_mouse_moves = record_mouse_moves
+        self.record_injected_key_events = record_injected_key_events
         self.target_window_id: int | None = None
         self.command_buffer: list[str] = []
         self.paused = False
@@ -198,7 +199,7 @@ class RdpRecorder:
         if code != HC_ACTION:
             return self.user32.CallNextHookEx(self.keyboard_hook, code, message, data)
         key = ctypes.cast(data, ctypes.POINTER(KBDLLHOOKSTRUCT)).contents
-        if key.flags & LLKHF_INJECTED:
+        if key.flags & LLKHF_INJECTED and not self.record_injected_key_events:
             return self.user32.CallNextHookEx(self.keyboard_hook, code, message, data)
         context = self.target_context()
         if not context:
@@ -333,6 +334,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=Path("rdp-events.jsonl"))
     parser.add_argument("--shell", choices=("unknown", "powershell", "bash"), default="unknown")
     parser.add_argument("--record-mouse-moves", action="store_true", help="Record mouse movement and all mouse coordinates")
+    parser.add_argument("--record-injected-key-events", action="store_true", help="Record injected keyboard events for diagnostics")
     args = parser.parse_args()
     if sys.platform != "win32":
         parser.error("WindowsRdpCollector.py must run on Windows")
@@ -343,7 +345,7 @@ def main() -> None:
     else:
         print("RDP capture records keyboard and mouse input only for the selected mstsc window.")
     print("Do not record passwords, tokens, or other secrets.")
-    RdpRecorder(args.output, args.window_title, args.shell, args.record_mouse_moves).run()
+    RdpRecorder(args.output, args.window_title, args.shell, args.record_mouse_moves, args.record_injected_key_events).run()
 
 
 if __name__ == "__main__":
