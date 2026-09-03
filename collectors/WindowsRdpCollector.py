@@ -29,9 +29,16 @@ WM_MBUTTONDOWN = 0x0207
 WM_MBUTTONUP = 0x0208
 WM_MOUSEWHEEL = 0x020A
 WM_QUIT = 0x0012
+WM_INPUT = 0x00FF
 LLKHF_INJECTED = 0x10
 LLMHF_INJECTED = 0x00000001
 LRESULT = ctypes.c_ssize_t
+RIM_TYPEKEYBOARD = 1
+RID_INPUT = 0x10000003
+RIDEV_INPUTSINK = 0x00000100
+RI_KEY_BREAK = 0x0001
+HWND_MESSAGE = -3
+INVALID_RAW_INPUT = 0xFFFFFFFF
 VK_BACK = 0x08
 VK_RETURN = 0x0D
 VK_CONTROL = 0x11
@@ -64,6 +71,53 @@ class MSLLHOOKSTRUCT(ctypes.Structure):
         ("flags", wintypes.DWORD),
         ("time", wintypes.DWORD),
         ("dwExtraInfo", ctypes.c_void_p),
+    ]
+
+
+class RAWINPUTDEVICE(ctypes.Structure):
+    _fields_ = [
+        ("usUsagePage", wintypes.WORD),
+        ("usUsage", wintypes.WORD),
+        ("dwFlags", wintypes.DWORD),
+        ("hwndTarget", ctypes.c_void_p),
+    ]
+
+
+class RAWINPUTHEADER(ctypes.Structure):
+    _fields_ = [
+        ("dwType", wintypes.DWORD),
+        ("dwSize", wintypes.DWORD),
+        ("hDevice", ctypes.c_void_p),
+        ("wParam", wintypes.WPARAM),
+    ]
+
+
+class RAWKEYBOARD(ctypes.Structure):
+    _fields_ = [
+        ("MakeCode", wintypes.WORD),
+        ("Flags", wintypes.WORD),
+        ("Reserved", wintypes.WORD),
+        ("VKey", wintypes.WORD),
+        ("Message", wintypes.UINT),
+        ("ExtraInformation", wintypes.DWORD),
+    ]
+
+
+WNDPROC = ctypes.WINFUNCTYPE(LRESULT, ctypes.c_void_p, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM)
+
+
+class WNDCLASSW(ctypes.Structure):
+    _fields_ = [
+        ("style", wintypes.UINT),
+        ("lpfnWndProc", WNDPROC),
+        ("cbClsExtra", ctypes.c_int),
+        ("cbWndExtra", ctypes.c_int),
+        ("hInstance", ctypes.c_void_p),
+        ("hIcon", ctypes.c_void_p),
+        ("hCursor", ctypes.c_void_p),
+        ("hbrBackground", ctypes.c_void_p),
+        ("lpszMenuName", wintypes.LPCWSTR),
+        ("lpszClassName", wintypes.LPCWSTR),
     ]
 
 
@@ -114,6 +168,7 @@ class RdpRecorder:
         record_mouse_moves: bool,
         record_injected_key_events: bool,
         process_names: tuple[str, ...] = ("mstsc.exe",),
+        use_raw_keyboard: bool = False,
     ):
         self.output = output
         self.title_substring = title_substring.casefold() if title_substring else None
@@ -121,6 +176,7 @@ class RdpRecorder:
         self.record_mouse_moves = record_mouse_moves
         self.record_injected_key_events = record_injected_key_events
         self.process_names = {process_name.casefold() for process_name in process_names}
+        self.use_raw_keyboard = use_raw_keyboard
         self.target_window_id: int | None = None
         self.command_buffer: list[str] = []
         self.paused = False
@@ -133,6 +189,9 @@ class RdpRecorder:
         self.mouse_hook = None
         self.keyboard_callback = None
         self.mouse_callback = None
+        self.raw_window_callback = None
+        self.raw_window = None
+        self.raw_window_class = None
 
     def target_context(self) -> dict | None:
         context = window_context(self.user32.GetForegroundWindow())
@@ -204,10 +263,52 @@ class RdpRecorder:
             },
         )
 
+    def record_key_event(self, vk_code: int, scan_code: int, is_down: bool, is_up: bool, context: dict) -> None:
+        modifiers = self.modifier_state()
+        if is_down and modifiers["ctrl"] and modifiers["shift"] and vk_code == VK_F11:
+            self.emit("rdp.recording_stopped", context)
+            self.user32.PostQuitMessage(0)
+            return
+        if is_down and modifiers["ctrl"] and modifiers["shift"] and vk_code == VK_F12:
+            self.paused = not self.paused
+            self.emit("rdp.recording_resumed" if not self.paused else "rdp.recording_paused", context)
+            return
+        if self.paused:
+            return
+        if is_down and modifiers["ctrl"] and vk_code == VK_V:
+            self.paste_key_active = True
+            self.command_buffer.append("<PASTED_CONTENT_NOT_CAPTURED>")
+            self.emit("rdp.paste_detected", context, input={"kind": "paste", "modifiers": modifiers})
+            return
+        if is_up and vk_code == VK_V and self.paste_key_active:
+            self.paste_key_active = False
+            return
+        self.emit(
+            "rdp.input",
+            context,
+            input={
+                "kind": "key",
+                "action": "down" if is_down else "up",
+                "vk_code": vk_code,
+                "scan_code": scan_code,
+                "modifiers": modifiers,
+            },
+        )
+        if is_down:
+            if vk_code == VK_RETURN:
+                self.submit_command(context)
+            elif vk_code == VK_BACK:
+                if self.command_buffer:
+                    self.command_buffer.pop()
+            elif vk_code not in (VK_CONTROL, VK_SHIFT, VK_MENU):
+                self.command_buffer.append(self.key_text(vk_code, scan_code))
+
     def keyboard_proc(self, code: int, message: int, data: int) -> int:
         if code != HC_ACTION:
             return self.user32.CallNextHookEx(self.keyboard_hook, code, message, data)
         key = ctypes.cast(data, ctypes.POINTER(KBDLLHOOKSTRUCT)).contents
+        if self.use_raw_keyboard and not key.flags & LLKHF_INJECTED:
+            return self.user32.CallNextHookEx(self.keyboard_hook, code, message, data)
         if key.flags & LLKHF_INJECTED and not self.record_injected_key_events:
             return self.user32.CallNextHookEx(self.keyboard_hook, code, message, data)
         context = self.target_context()
@@ -217,44 +318,7 @@ class RdpRecorder:
         is_up = message in (WM_KEYUP, WM_SYSKEYUP)
         if not (is_down or is_up):
             return self.user32.CallNextHookEx(self.keyboard_hook, code, message, data)
-        modifiers = self.modifier_state()
-        if is_down and modifiers["ctrl"] and modifiers["shift"] and key.vkCode == VK_F11:
-            self.emit("rdp.recording_stopped", context)
-            self.user32.PostQuitMessage(0)
-            return self.user32.CallNextHookEx(self.keyboard_hook, code, message, data)
-        if is_down and modifiers["ctrl"] and modifiers["shift"] and key.vkCode == VK_F12:
-            self.paused = not self.paused
-            self.emit("rdp.recording_resumed" if not self.paused else "rdp.recording_paused", context)
-            return self.user32.CallNextHookEx(self.keyboard_hook, code, message, data)
-        if self.paused:
-            return self.user32.CallNextHookEx(self.keyboard_hook, code, message, data)
-        if is_down and modifiers["ctrl"] and key.vkCode == VK_V:
-            self.paste_key_active = True
-            self.command_buffer.append("<PASTED_CONTENT_NOT_CAPTURED>")
-            self.emit("rdp.paste_detected", context, input={"kind": "paste", "modifiers": modifiers})
-            return self.user32.CallNextHookEx(self.keyboard_hook, code, message, data)
-        if is_up and key.vkCode == VK_V and self.paste_key_active:
-            self.paste_key_active = False
-            return self.user32.CallNextHookEx(self.keyboard_hook, code, message, data)
-        self.emit(
-            "rdp.input",
-            context,
-            input={
-                "kind": "key",
-                "action": "down" if is_down else "up",
-                "vk_code": key.vkCode,
-                "scan_code": key.scanCode,
-                "modifiers": modifiers,
-            },
-        )
-        if is_down:
-            if key.vkCode == VK_RETURN:
-                self.submit_command(context)
-            elif key.vkCode == VK_BACK:
-                if self.command_buffer:
-                    self.command_buffer.pop()
-            elif key.vkCode not in (VK_CONTROL, VK_SHIFT, VK_MENU):
-                self.command_buffer.append(self.key_text(key.vkCode, key.scanCode))
+        self.record_key_event(key.vkCode, key.scanCode, is_down, is_up, context)
         return self.user32.CallNextHookEx(self.keyboard_hook, code, message, data)
 
     def safe_keyboard_proc(self, code: int, message: int, data: int) -> int:
@@ -263,6 +327,72 @@ class RdpRecorder:
         except Exception as error:
             print(f"Keyboard hook error: {error}", file=sys.stderr, flush=True)
             return self.forward_event(self.keyboard_hook, code, message, data)
+
+    def raw_keyboard_proc(self, data: int) -> None:
+        size = wintypes.UINT()
+        header_size = ctypes.sizeof(RAWINPUTHEADER)
+        if self.user32.GetRawInputData(ctypes.c_void_p(data), RID_INPUT, None, ctypes.byref(size), header_size) == INVALID_RAW_INPUT:
+            return
+        buffer = ctypes.create_string_buffer(size.value)
+        if self.user32.GetRawInputData(ctypes.c_void_p(data), RID_INPUT, ctypes.cast(buffer, ctypes.c_void_p), ctypes.byref(size), header_size) == INVALID_RAW_INPUT:
+            return
+        header = ctypes.cast(buffer, ctypes.POINTER(RAWINPUTHEADER)).contents
+        if header.dwType != RIM_TYPEKEYBOARD:
+            return
+        keyboard_address = ctypes.addressof(buffer) + header_size
+        keyboard = ctypes.cast(keyboard_address, ctypes.POINTER(RAWKEYBOARD)).contents
+        if keyboard.VKey == 0xFF:
+            return
+        context = self.target_context()
+        if not context:
+            return
+        is_up = bool(keyboard.Flags & RI_KEY_BREAK)
+        self.record_key_event(keyboard.VKey, keyboard.MakeCode, not is_up, is_up, context)
+
+    def raw_window_proc(self, hwnd: int, message: int, wparam: int, lparam: int) -> int:
+        try:
+            if message == WM_INPUT:
+                self.raw_keyboard_proc(lparam)
+        except Exception as error:
+            print(f"Raw keyboard input error: {error}", file=sys.stderr, flush=True)
+        return self.user32.DefWindowProcW(hwnd, message, wparam, lparam)
+
+    def install_raw_keyboard_window(self, module: int) -> None:
+        self.raw_window_class = f"TraineeRawKeyboard{os.getpid()}"
+        self.raw_window_callback = WNDPROC(self.raw_window_proc)
+        window_class = WNDCLASSW()
+        window_class.lpfnWndProc = self.raw_window_callback
+        window_class.hInstance = module
+        window_class.lpszClassName = self.raw_window_class
+        if not self.user32.RegisterClassW(ctypes.byref(window_class)):
+            raise OSError("Unable to register the raw keyboard window class")
+        self.raw_window = self.user32.CreateWindowExW(
+            0,
+            self.raw_window_class,
+            None,
+            0,
+            0,
+            0,
+            0,
+            0,
+            ctypes.c_void_p(HWND_MESSAGE),
+            None,
+            module,
+            None,
+        )
+        if not self.raw_window:
+            raise OSError("Unable to create the raw keyboard input window")
+        device = RAWINPUTDEVICE(1, 6, RIDEV_INPUTSINK, self.raw_window)
+        if not self.user32.RegisterRawInputDevices(ctypes.byref(device), 1, ctypes.sizeof(RAWINPUTDEVICE)):
+            raise OSError("Unable to register raw keyboard input")
+
+    def remove_raw_keyboard_window(self, module: int) -> None:
+        if self.raw_window:
+            self.user32.DestroyWindow(self.raw_window)
+            self.raw_window = None
+        if self.raw_window_class:
+            self.user32.UnregisterClassW(self.raw_window_class, module)
+            self.raw_window_class = None
 
     def mouse_proc(self, code: int, message: int, data: int) -> int:
         if code != HC_ACTION or self.paused:
@@ -311,18 +441,49 @@ class RdpRecorder:
 
     def run(self) -> None:
         hook_type = ctypes.WINFUNCTYPE(LRESULT, ctypes.c_int, wintypes.WPARAM, wintypes.LPARAM)
-        self.keyboard_callback = hook_type(self.safe_keyboard_proc)
         self.mouse_callback = hook_type(self.safe_mouse_proc)
+        if not self.use_raw_keyboard or self.record_injected_key_events:
+            self.keyboard_callback = hook_type(self.safe_keyboard_proc)
         self.kernel32.GetModuleHandleW.argtypes = (wintypes.LPCWSTR,)
         self.kernel32.GetModuleHandleW.restype = ctypes.c_void_p
         self.user32.SetWindowsHookExW.argtypes = (ctypes.c_int, hook_type, ctypes.c_void_p, wintypes.DWORD)
         self.user32.SetWindowsHookExW.restype = ctypes.c_void_p
         self.user32.CallNextHookEx.argtypes = (ctypes.c_void_p, ctypes.c_int, wintypes.WPARAM, wintypes.LPARAM)
         self.user32.CallNextHookEx.restype = LRESULT
+        self.user32.GetRawInputData.argtypes = (ctypes.c_void_p, wintypes.UINT, ctypes.c_void_p, ctypes.POINTER(wintypes.UINT), wintypes.UINT)
+        self.user32.GetRawInputData.restype = wintypes.UINT
+        self.user32.RegisterClassW.argtypes = (ctypes.POINTER(WNDCLASSW),)
+        self.user32.RegisterClassW.restype = wintypes.WORD
+        self.user32.CreateWindowExW.argtypes = (
+            wintypes.DWORD,
+            wintypes.LPCWSTR,
+            wintypes.LPCWSTR,
+            wintypes.DWORD,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+        )
+        self.user32.CreateWindowExW.restype = ctypes.c_void_p
+        self.user32.RegisterRawInputDevices.argtypes = (ctypes.POINTER(RAWINPUTDEVICE), wintypes.UINT, wintypes.UINT)
+        self.user32.RegisterRawInputDevices.restype = wintypes.BOOL
+        self.user32.DefWindowProcW.argtypes = (ctypes.c_void_p, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM)
+        self.user32.DefWindowProcW.restype = LRESULT
+        self.user32.DestroyWindow.argtypes = (ctypes.c_void_p,)
+        self.user32.DestroyWindow.restype = wintypes.BOOL
+        self.user32.UnregisterClassW.argtypes = (wintypes.LPCWSTR, ctypes.c_void_p)
+        self.user32.UnregisterClassW.restype = wintypes.BOOL
         module = self.kernel32.GetModuleHandleW(None)
-        self.keyboard_hook = self.user32.SetWindowsHookExW(WH_KEYBOARD_LL, self.keyboard_callback, module, 0)
+        if self.use_raw_keyboard:
+            self.install_raw_keyboard_window(module)
+        if self.keyboard_callback:
+            self.keyboard_hook = self.user32.SetWindowsHookExW(WH_KEYBOARD_LL, self.keyboard_callback, module, 0)
         self.mouse_hook = self.user32.SetWindowsHookExW(WH_MOUSE_LL, self.mouse_callback, module, 0)
-        if not self.keyboard_hook or not self.mouse_hook:
+        if not self.mouse_hook or (not self.use_raw_keyboard and not self.keyboard_hook):
             raise OSError("Unable to install the RDP input hooks")
         print("RDP recording active. Ctrl+Shift+F12 pauses/resumes; Ctrl+Shift+F11 stops.")
         message = wintypes.MSG()
@@ -331,8 +492,12 @@ class RdpRecorder:
                 self.user32.TranslateMessage(ctypes.byref(message))
                 self.user32.DispatchMessageW(ctypes.byref(message))
         finally:
-            self.user32.UnhookWindowsHookEx(self.keyboard_hook)
-            self.user32.UnhookWindowsHookEx(self.mouse_hook)
+            if self.keyboard_hook:
+                self.user32.UnhookWindowsHookEx(self.keyboard_hook)
+            if self.mouse_hook:
+                self.user32.UnhookWindowsHookEx(self.mouse_hook)
+            if self.use_raw_keyboard:
+                self.remove_raw_keyboard_window(module)
 
 
 def main() -> None:

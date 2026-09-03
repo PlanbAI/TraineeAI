@@ -12,6 +12,7 @@ TraineeAI records and replays input sent from a local Windows 10 or 11 machine t
 - Mouse movement is omitted by default. Coordinates are recorded for button-down events; `--record-mouse-moves` restores full mouse movement and coordinate logging.
 - Injected keyboard events are ignored by default. `--record-injected-key-events` enables them only for capture diagnostics; clipboard contents remain unread.
 - The Windows launcher also starts a CyberArk collector. It waits for a configured PSM client process, records one selected window to `cyberark-events.jsonl`, and accepts injected keyboard events by default for CyberArk diagnostics.
+- The CyberArk collector uses Windows Raw Input for physical keyboard events because some PSM clients do not expose them through a low-level keyboard hook.
 - `Ctrl+Shift+F12` pauses or resumes recording. `Ctrl+Shift+F11` stops it.
 - Replay is dry-run by default. Sending input requires an explicit `--execute` flag.
 - Replay stops when the selected RDP window loses focus. It can require a manual checkpoint before sending input.

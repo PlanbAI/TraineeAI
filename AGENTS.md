@@ -36,6 +36,7 @@ scripts\start_windows_collectors.cmd
 - RDP collection logs only button-down mouse coordinates by default. Pass `--record-mouse-moves` to `scripts\start_windows_collectors.cmd` only when detailed mouse movement is required.
 - For keyboard-capture diagnostics, pass `--record-injected-key-events` to `scripts\start_windows_collectors.cmd`; it does not allow clipboard capture.
 - The CyberArk collector waits for common PSM client processes and writes `cyberark-events.jsonl` only for its selected window. Pass `--cyberark-process-name client.exe` when CyberArk uses another executable.
+- The CyberArk collector uses Windows Raw Input for physical keyboard events; it remains restricted to the selected PSM window.
 - Do not run replay with `-Execute` unless the user explicitly authorizes the target test session.
 
 ### Ubuntu

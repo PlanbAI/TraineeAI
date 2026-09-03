@@ -52,6 +52,7 @@ def main() -> None:
         args.record_mouse_moves,
         not args.ignore_injected_key_events,
         process_names,
+        use_raw_keyboard=True,
     ).run()
 
 

@@ -9,6 +9,9 @@ from collectors.WindowsRdpCollector import (
     KBDLLHOOKSTRUCT,
     LLKHF_INJECTED,
     MSLLHOOKSTRUCT,
+    RAWINPUTHEADER,
+    RAWKEYBOARD,
+    RIM_TYPEKEYBOARD,
     RdpRecorder,
     WM_KEYDOWN,
     WM_LBUTTONDOWN,
@@ -20,8 +23,8 @@ from collectors.WindowsRdpCollector import (
 
 @unittest.skipUnless(sys.platform == "win32", "Windows hook behavior is Windows-only")
 class RdpMouseRecordingTests(unittest.TestCase):
-    def recorder(self, record_mouse_moves: bool, record_injected_key_events: bool = False):
-        recorder = RdpRecorder(Path("unused.jsonl"), None, "unknown", record_mouse_moves, record_injected_key_events)
+    def recorder(self, record_mouse_moves: bool, record_injected_key_events: bool = False, use_raw_keyboard: bool = False):
+        recorder = RdpRecorder(Path("unused.jsonl"), None, "unknown", record_mouse_moves, record_injected_key_events, use_raw_keyboard=use_raw_keyboard)
         recorder.user32 = type("User32", (), {
             "CallNextHookEx": staticmethod(lambda *_: 0),
             "ScreenToClient": staticmethod(lambda *_: 1),
@@ -93,6 +96,16 @@ class RdpMouseRecordingTests(unittest.TestCase):
         self.assertEqual(disabled_events, [])
         self.assertEqual(enabled_events[0]["kind"], "key")
 
+    def test_raw_keyboard_mode_skips_duplicate_physical_low_level_events(self):
+        recorder, events = self.recorder(record_mouse_moves=False, use_raw_keyboard=True)
+        key = KBDLLHOOKSTRUCT()
+        key.vkCode = 0x41
+        key.scanCode = 0x1E
+
+        recorder.keyboard_proc(HC_ACTION, WM_KEYDOWN, ctypes.addressof(key))
+
+        self.assertEqual(events, [])
+
     def test_accepts_configured_cyberark_client_process(self):
         recorder = RdpRecorder(
             Path("unused.jsonl"),
@@ -107,3 +120,30 @@ class RdpMouseRecordingTests(unittest.TestCase):
 
         with patch("collectors.WindowsRdpCollector.window_context", return_value=context):
             self.assertEqual(recorder.target_context(), context)
+
+    def test_raw_keyboard_packet_records_keydown(self):
+        recorder, events = self.recorder(record_mouse_moves=False)
+        recorder.modifier_state = lambda: {"ctrl": False, "shift": False, "alt": False}
+        recorder.key_text = lambda *_: "a"
+        header = RAWINPUTHEADER()
+        header.dwType = RIM_TYPEKEYBOARD
+        header.dwSize = ctypes.sizeof(RAWINPUTHEADER) + ctypes.sizeof(RAWKEYBOARD)
+        keyboard = RAWKEYBOARD()
+        keyboard.MakeCode = 0x1E
+        keyboard.VKey = 0x41
+        packet = bytes(header) + bytes(keyboard)
+
+        def get_raw_input_data(_data, _command, buffer, size_pointer, _header_size):
+            size = ctypes.cast(size_pointer, ctypes.POINTER(ctypes.c_uint)).contents
+            if buffer is None:
+                size.value = len(packet)
+                return 0
+            ctypes.memmove(buffer, packet, len(packet))
+            return len(packet)
+
+        recorder.user32.GetRawInputData = get_raw_input_data
+        recorder.raw_keyboard_proc(1)
+
+        self.assertEqual(events[0]["kind"], "key")
+        self.assertEqual(events[0]["action"], "down")
+        self.assertEqual(events[0]["vk_code"], 0x41)

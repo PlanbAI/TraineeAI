@@ -73,3 +73,6 @@ This document lists only functionality implemented in the current alpha release.
 
 - **FR-20.** The Windows launchers start a waiting CyberArk collector. It selects one active configured CyberArk PSM client window, records its input to `cyberark-events.jsonl`, and accepts injected keyboard events for diagnostics by default.
 - **FR-20.** Windows-лаунчеры запускают ожидающий CyberArk-коллектор. Он выбирает одно активное настроенное окно клиента CyberArk PSM, записывает его ввод в `cyberark-events.jsonl` и по умолчанию принимает injected-события клавиатуры для диагностики.
+
+- **FR-21.** The CyberArk collector receives physical keyboard events through Windows Raw Input and writes them only while its selected PSM client window is foreground.
+- **FR-21.** CyberArk-коллектор получает физические события клавиатуры через Windows Raw Input и записывает их только пока выбранное окно PSM-клиента находится на переднем плане.

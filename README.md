@@ -120,7 +120,7 @@ RDP mouse movement is not logged by default. To restore detailed mouse movement 
 
 For a keyboard-capture diagnostic, add `--record-injected-key-events` to `scripts\start_windows_collectors.cmd` or `-RecordInjectedKeyEvents` to either PowerShell RDP launcher. This records synthetic keyboard events that are normally ignored; it does not read clipboard contents.
 
-The CyberArk collector writes `cyberark-events.jsonl` only after it selects an active PSM client window. It waits for common PSM executable names by default. If the client uses another executable, pass `--cyberark-process-name client.exe` to `scripts\start_windows_collectors.cmd` or run `scripts\run_cyberark_recorder.ps1 -ProcessName client.exe`.
+The CyberArk collector writes `cyberark-events.jsonl` only after it selects an active PSM client window. It uses Windows Raw Input for physical keyboard events, which helps when a PSM client does not expose keys through a low-level hook. It waits for common PSM executable names by default. If the client uses another executable, pass `--cyberark-process-name client.exe` to `scripts\start_windows_collectors.cmd` or run `scripts\run_cyberark_recorder.ps1 -ProcessName client.exe`.
 
 ### Windows RDP Recording And Replay
 
