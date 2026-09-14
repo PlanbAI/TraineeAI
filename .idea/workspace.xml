@@ -4,14 +4,31 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="88c04155-05a5-4308-b362-2605d73690cb" name="Changes" comment="amend watchers" />
+    <list default="true" id="88c04155-05a5-4308-b362-2605d73690cb" name="Changes" comment="amend watchers">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/AGENTS.md" beforeDir="false" afterPath="$PROJECT_DIR$/AGENTS.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PROJECT_STRUCTURE.md" beforeDir="false" afterPath="$PROJECT_DIR$/PROJECT_STRUCTURE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/analysis/normalize.py" beforeDir="false" afterPath="$PROJECT_DIR$/analysis/normalize.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/browser_listener.js" beforeDir="false" afterPath="$PROJECT_DIR$/browser_listener.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/collectors/BrowserCollector.py" beforeDir="false" afterPath="$PROJECT_DIR$/collectors/BrowserCollector.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/collectors/WindowsRdpCollector.py" beforeDir="false" afterPath="$PROJECT_DIR$/collectors/WindowsRdpCollector.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/functional-requirements.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/functional-requirements.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/rdp-recorder-requirements.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/rdp-recorder-requirements.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/run_browser_collector.ps1" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/run_browser_collector.ps1" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/run_windows_collectors.ps1" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/run_windows_collectors.ps1" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/run_windows_collectors.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/run_windows_collectors.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_preprocessing.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_preprocessing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_rdp_collector.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_rdp_collector.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="39" />
+    <option name="cachedIndexableFilesCount" value="57" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">

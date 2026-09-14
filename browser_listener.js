@@ -177,6 +177,49 @@
 
     document.addEventListener("keydown", e => send("keydown", e), true);
 
+    const cyberArkCommandBuffer = [];
+    const sensitiveCommand = /password|passcode|secret|token|api[ _-]?key|authorization|bearer|private[ _-]?key|credit[ _-]?card|card[ _-]?number|cvv|cvc|ssn/i;
+
+    function isCyberArkTerminalEvent(event) {
+        const config = window.__traineeCyberArkTerminalConfig;
+        if (!config || !event.target?.closest) return false;
+        try {
+            if (!new RegExp(config.urlPattern, "i").test(location.href)) return false;
+        } catch (_) {
+            return false;
+        }
+        return Boolean(event.target.closest(config.selector));
+    }
+
+    document.addEventListener(
+        "keydown",
+        event => {
+            if (!isCyberArkTerminalEvent(event) || event.isComposing) return;
+            if (event.key === "Enter") {
+                const command = cyberArkCommandBuffer.join("").trim();
+                cyberArkCommandBuffer.length = 0;
+                if (!command) return;
+                const redacted = sensitiveCommand.test(command);
+                send("cyberark.command_submitted", event, {
+                    terminal: {
+                        shell: window.__traineeCyberArkTerminalConfig.shell,
+                        command: redacted ? "<REDACTED_COMMAND>" : command,
+                        content_redacted: redacted
+                    }
+                });
+                return;
+            }
+            if (event.key === "Backspace") {
+                cyberArkCommandBuffer.pop();
+                return;
+            }
+            if (!event.ctrlKey && !event.altKey && !event.metaKey && event.key.length === 1) {
+                cyberArkCommandBuffer.push(event.key);
+            }
+        },
+        true
+    );
+
     document.addEventListener("change", e => send("change", e), true);
 
     document.addEventListener(

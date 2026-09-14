@@ -49,6 +49,32 @@ class NormalizeTests(unittest.TestCase):
         self.assertEqual(event.target["value"], "<REDACTED>")
         self.assertTrue(event.data["value_redacted"])
 
+    def test_normalizes_cyberark_browser_terminal_command(self):
+        event = normalize_browser(
+            {
+                "timestamp": "2026-08-28T12:00:00Z",
+                "type": "cyberark.command_submitted",
+                "page": {"url": "https://psm.example/session", "title": "CyberArk"},
+                "terminal": {"shell": "powershell", "command": "Get-Process", "content_redacted": False},
+            }
+        )
+
+        self.assertEqual(event.event_type, "cyberark.command_submitted")
+        self.assertEqual(event.target["command"], "Get-Process")
+
+    def test_redacts_sensitive_cyberark_browser_terminal_command(self):
+        event = normalize_browser(
+            {
+                "timestamp": "2026-08-28T12:00:00Z",
+                "type": "cyberark.command_submitted",
+                "page": {"url": "https://psm.example/session", "title": "CyberArk"},
+                "terminal": {"shell": "powershell", "command": "set api_token=secret", "content_redacted": False},
+            }
+        )
+
+        self.assertEqual(event.target["command"], "<REDACTED_COMMAND>")
+        self.assertTrue(event.data["value_redacted"])
+
     def test_normalizes_and_redacts_rdp_command(self):
         event = normalize_desktop(
             {

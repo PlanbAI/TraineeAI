@@ -37,6 +37,9 @@ scripts\start_windows_collectors.cmd
 - For keyboard-capture diagnostics, pass `--record-injected-key-events` to `scripts\start_windows_collectors.cmd`; it does not allow clipboard capture.
 - The CyberArk collector waits for common PSM client processes and writes `cyberark-events.jsonl` only for its selected window. Pass `--cyberark-process-name client.exe` when CyberArk uses another executable.
 - The CyberArk collector uses Windows Raw Input for physical keyboard events; it remains restricted to the selected PSM window.
+- To validate Raw Input locally without CyberArk, run `python scripts\test_cyberark_raw_input.py` and use only the synthetic `rawinput-test` input in the Notepad test window.
+- For a native PSM client that suppresses local input, the optional `scripts\remote\Enable-TraineePowerShellAudit.ps1` runs inside an explicitly authorized remote PowerShell test session. It records commands only and never transfers the remote audit file automatically.
+- For a CyberArk HTML5 client, pass both `--cyberark-browser-url-pattern` and `--cyberark-browser-selector` to `scripts\start_windows_collectors.cmd`. Require an exact terminal canvas selector, never a credential-entry element.
 - Do not run replay with `-Execute` unless the user explicitly authorizes the target test session.
 
 ### Ubuntu

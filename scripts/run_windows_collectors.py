@@ -141,6 +141,10 @@ def run_collectors(args: argparse.Namespace) -> int:
     environment = os.environ.copy()
     environment["CDP_HOST"] = "127.0.0.1"
     environment["CDP_PORT"] = str(args.cdp_port)
+    if args.cyberark_browser_url_pattern and args.cyberark_browser_selector:
+        environment["CYBERARK_TERMINAL_URL_PATTERN"] = args.cyberark_browser_url_pattern
+        environment["CYBERARK_TERMINAL_SELECTOR"] = args.cyberark_browser_selector
+        environment["CYBERARK_TERMINAL_SHELL"] = args.cyberark_browser_shell
     processes: list[subprocess.Popen] = []
     started_browser: subprocess.Popen | None = None
     stop_requested = False
@@ -248,6 +252,9 @@ def main() -> int:
     parser.add_argument("--cyberark-output", default="cyberark-events.jsonl")
     parser.add_argument("--cyberark-shell", choices=("unknown", "powershell", "bash"), default="unknown")
     parser.add_argument("--cyberark-process-name", action="append", default=[])
+    parser.add_argument("--cyberark-browser-url-pattern")
+    parser.add_argument("--cyberark-browser-selector")
+    parser.add_argument("--cyberark-browser-shell", choices=("unknown", "powershell", "bash"), default="unknown")
     parser.add_argument("--record-mouse-moves", action="store_true")
     parser.add_argument("--record-injected-key-events", action="store_true")
     args = parser.parse_args()

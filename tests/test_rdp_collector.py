@@ -77,6 +77,7 @@ class RdpMouseRecordingTests(unittest.TestCase):
             "vk_code": 0x41,
             "scan_code": 0x1E,
             "modifiers": {"ctrl": False, "shift": False, "alt": False},
+            "capture_source": "low_level_hook",
         }])
 
     def test_records_injected_keydown_only_when_enabled(self):
@@ -147,3 +148,4 @@ class RdpMouseRecordingTests(unittest.TestCase):
         self.assertEqual(events[0]["kind"], "key")
         self.assertEqual(events[0]["action"], "down")
         self.assertEqual(events[0]["vk_code"], 0x41)
+        self.assertEqual(events[0]["capture_source"], "raw_input")

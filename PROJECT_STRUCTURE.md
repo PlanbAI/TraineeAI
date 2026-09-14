@@ -35,8 +35,11 @@ Trainee/
 |  |- run_browser_collector.sh
 |  |- run_rdp_recorder.ps1
 |  |- run_rdp_replay.ps1
+|  |- test_cyberark_raw_input.py
 |  |- run_capture.sh
-|  `- run_full_test.sh
+|  |- run_full_test.sh
+|  `- remote/
+|     `- Enable-TraineePowerShellAudit.ps1
 |- docs/
 |  |- ai-llm-integration.md
 |  |- functional-requirements.md

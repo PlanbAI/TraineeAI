@@ -79,7 +79,7 @@ def normalize_browser(event: dict) -> UnifiedEvent:
         event.get("timestamp") or event.get("_collector_timestamp")
     )
     page = event.get("page") or {}
-    element = _redact_sensitive_target(event.get("element") or None)
+    element = _redact_sensitive_target(event.get("element") or event.get("terminal") or None)
     tab = event.get("_tab") or {}
     event_type = event.get("type", "browser.unknown")
 
@@ -88,7 +88,7 @@ def normalize_browser(event: dict) -> UnifiedEvent:
         "keyboard": event.get("keyboard"),
         "navigation_type": event.get("navigationType"),
         "value_redacted": event.get("valueRedacted", False)
-        or bool(element and element.get("valueRedacted")),
+        or bool(element and (element.get("valueRedacted") or element.get("content_redacted"))),
     }
 
     entities = _entity_values(

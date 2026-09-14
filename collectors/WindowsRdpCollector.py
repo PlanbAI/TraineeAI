@@ -263,7 +263,15 @@ class RdpRecorder:
             },
         )
 
-    def record_key_event(self, vk_code: int, scan_code: int, is_down: bool, is_up: bool, context: dict) -> None:
+    def record_key_event(
+        self,
+        vk_code: int,
+        scan_code: int,
+        is_down: bool,
+        is_up: bool,
+        context: dict,
+        capture_source: str = "low_level_hook",
+    ) -> None:
         modifiers = self.modifier_state()
         if is_down and modifiers["ctrl"] and modifiers["shift"] and vk_code == VK_F11:
             self.emit("rdp.recording_stopped", context)
@@ -292,6 +300,7 @@ class RdpRecorder:
                 "vk_code": vk_code,
                 "scan_code": scan_code,
                 "modifiers": modifiers,
+                "capture_source": capture_source,
             },
         )
         if is_down:
@@ -347,7 +356,7 @@ class RdpRecorder:
         if not context:
             return
         is_up = bool(keyboard.Flags & RI_KEY_BREAK)
-        self.record_key_event(keyboard.VKey, keyboard.MakeCode, not is_up, is_up, context)
+        self.record_key_event(keyboard.VKey, keyboard.MakeCode, not is_up, is_up, context, "raw_input")
 
     def raw_window_proc(self, hwnd: int, message: int, wparam: int, lparam: int) -> int:
         try:

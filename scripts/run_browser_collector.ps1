@@ -3,7 +3,11 @@ param(
     [string]$ChromeBin,
     [int]$CdpPort = 9222,
     [string]$ProfileDirectory = (Join-Path $HOME ".traineeai-cdp-profile"),
-    [int]$DurationSeconds = 0
+    [int]$DurationSeconds = 0,
+    [string]$CyberArkTerminalUrlPattern,
+    [string]$CyberArkTerminalSelector,
+    [ValidateSet("unknown", "powershell", "bash")]
+    [string]$CyberArkTerminalShell = "unknown"
 )
 
 $ErrorActionPreference = "Stop"
@@ -91,6 +95,11 @@ try {
     Write-Host "Events file: $(Join-Path $rootDir 'browser-events.jsonl')"
     $env:CDP_HOST = "127.0.0.1"
     $env:CDP_PORT = $CdpPort
+    if ($CyberArkTerminalUrlPattern -and $CyberArkTerminalSelector) {
+        $env:CYBERARK_TERMINAL_URL_PATTERN = $CyberArkTerminalUrlPattern
+        $env:CYBERARK_TERMINAL_SELECTOR = $CyberArkTerminalSelector
+        $env:CYBERARK_TERMINAL_SHELL = $CyberArkTerminalShell
+    }
     $collectorProcess = Start-Process -FilePath $PythonBin -ArgumentList $collector -WorkingDirectory $rootDir -PassThru -NoNewWindow
     Start-Sleep -Seconds 1
     if ($collectorProcess.HasExited) {

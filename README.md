@@ -122,6 +122,18 @@ For a keyboard-capture diagnostic, add `--record-injected-key-events` to `script
 
 The CyberArk collector writes `cyberark-events.jsonl` only after it selects an active PSM client window. It uses Windows Raw Input for physical keyboard events, which helps when a PSM client does not expose keys through a low-level hook. It waits for common PSM executable names by default. If the client uses another executable, pass `--cyberark-process-name client.exe` to `scripts\start_windows_collectors.cmd` or run `scripts\run_cyberark_recorder.ps1 -ProcessName client.exe`.
 
+To test the Raw Input path locally without CyberArk, run `python scripts\test_cyberark_raw_input.py`, type `rawinput-test` into the Notepad window it opens, and return to the terminal. The script passes only when it finds keyboard events with `capture_source: "raw_input"`.
+
+For a native PSM client that suppresses local keyboard events, use the optional source-side PowerShell audit in an authorized test session. Make `scripts\remote\Enable-TraineePowerShellAudit.ps1` available on the remote host, run it after authentication, and export its JSONL file using an approved method. It records submitted PowerShell commands only, not terminal output, screen contents, or clipboard data. Run `Stop-TraineeTerminalAudit` before entering secrets.
+
+For a CyberArk HTML5 terminal in Chrome or Edge, enable browser command capture only with the exact terminal URL pattern and canvas selector:
+
+```bat
+scripts\start_windows_collectors.cmd --cyberark-browser-url-pattern "privilege-cloud\\.example" --cyberark-browser-selector "canvas" --cyberark-browser-shell powershell
+```
+
+Do not use a selector that matches login forms or other credential-entry elements.
+
 ### Windows RDP Recording And Replay
 
 The RDP alpha records input only for one explicitly selected Microsoft Remote Desktop (`mstsc.exe`) window. Start recording after signing in to the remote system and stop it before entering credentials or secrets.

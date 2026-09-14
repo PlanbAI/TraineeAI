@@ -20,10 +20,21 @@ OUTPUT_FILE = "browser-events.jsonl"
 
 BINDING_NAME = "__pythonUserEvent"
 
+CYBERARK_TERMINAL_CONFIG = None
+if os.environ.get("CYBERARK_TERMINAL_URL_PATTERN") and os.environ.get("CYBERARK_TERMINAL_SELECTOR"):
+    CYBERARK_TERMINAL_CONFIG = {
+        "urlPattern": os.environ["CYBERARK_TERMINAL_URL_PATTERN"],
+        "selector": os.environ["CYBERARK_TERMINAL_SELECTOR"],
+        "shell": os.environ.get("CYBERARK_TERMINAL_SHELL", "unknown"),
+    }
+
 # JS выполняется внутри каждой страницы.
 # Код самой страницы на диске/сервере не изменяется.
 LISTENER_PATH = Path(__file__).resolve().parents[1] / "browser_listener.js"
-LISTENER_JS = LISTENER_PATH.read_text(encoding="utf-8")
+LISTENER_JS = (
+    f"window.__traineeCyberArkTerminalConfig = {json.dumps(CYBERARK_TERMINAL_CONFIG)};\n"
+    + LISTENER_PATH.read_text(encoding="utf-8")
+)
 
 
 class LocalWebSocket:

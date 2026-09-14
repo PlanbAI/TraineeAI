@@ -14,8 +14,8 @@ This document lists only functionality implemented in the current alpha release.
 
 ## Windows Capture / Сбор в Windows
 
-- **FR-03.** `scripts/start_windows_collectors.cmd` starts the Windows desktop collector, browser collector, and waiting RDP collector in the background without PowerShell. `scripts/stop_windows_collectors.cmd` stops that set of collectors.
-- **FR-03.** `scripts/start_windows_collectors.cmd` запускает коллекторы Windows desktop, браузера и ожидающий RDP-коллектор в фоновом режиме без PowerShell. `scripts/stop_windows_collectors.cmd` останавливает этот набор коллекторов.
+- **FR-03.** `scripts/start_windows_collectors.cmd` starts the Windows desktop, browser, waiting RDP, and waiting CyberArk collectors in the background without PowerShell. `scripts/stop_windows_collectors.cmd` stops that set of collectors.
+- **FR-03.** `scripts/start_windows_collectors.cmd` запускает коллекторы Windows desktop, браузера, ожидающий RDP- и ожидающий CyberArk-коллекторы в фоновом режиме без PowerShell. `scripts/stop_windows_collectors.cmd` останавливает этот набор коллекторов.
 
 - **FR-04.** The CMD launcher must detach collector standard streams from its caller and return immediately, so an OpenCode session that starts collectors is not blocked.
 - **FR-04.** CMD-лаунчер должен отсоединять стандартные потоки коллекторов от вызвавшего процесса и завершаться сразу, чтобы сессия OpenCode, запускающая коллекторы, не блокировалась.
@@ -76,3 +76,9 @@ This document lists only functionality implemented in the current alpha release.
 
 - **FR-21.** The CyberArk collector receives physical keyboard events through Windows Raw Input and writes them only while its selected PSM client window is foreground.
 - **FR-21.** CyberArk-коллектор получает физические события клавиатуры через Windows Raw Input и записывает их только пока выбранное окно PSM-клиента находится на переднем плане.
+
+- **FR-22.** An optional PowerShell audit script can run in an explicitly authorized remote session and write submitted PowerShell commands to a remote JSONL file. It does not collect terminal output, screen contents, or clipboard data, and does not transfer the file automatically.
+- **FR-22.** Необязательный PowerShell audit-скрипт может выполняться в явно авторизованной удаленной сессии и записывать отправленные PowerShell-команды в удаленный JSONL-файл. Он не собирает вывод терминала, содержимое экрана или буфера обмена и не передает файл автоматически.
+
+- **FR-23.** Opt-in browser capture can create `cyberark.command_submitted` events for an explicitly configured CyberArk HTML5 terminal URL pattern and terminal CSS selector. It is disabled unless both values are provided.
+- **FR-23.** Opt-in browser-сбор может создавать события `cyberark.command_submitted` для явно настроенных URL-pattern и CSS selector терминала CyberArk HTML5. Он выключен, пока не переданы оба значения.

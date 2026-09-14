@@ -9,3 +9,4 @@ cyberark-events.jsonl
 windows-collectors-state.json
 windows-collectors.log
 test-output/
+/collectors/kb_collector/logs/

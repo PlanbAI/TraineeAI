@@ -13,6 +13,10 @@ param(
     [ValidateSet("unknown", "powershell", "bash")]
     [string]$CyberArkShell = "unknown",
     [string[]]$CyberArkProcessName,
+    [string]$CyberArkBrowserUrlPattern,
+    [string]$CyberArkBrowserSelector,
+    [ValidateSet("unknown", "powershell", "bash")]
+    [string]$CyberArkBrowserShell = "unknown",
     [switch]$RecordMouseMoves,
     [switch]$RecordInjectedKeyEvents
 )
@@ -81,7 +85,7 @@ try {
         throw "CyberArk collector exited immediately with code $($cyberarkProcess.ExitCode)."
     }
 
-    & $browserLauncher -PythonBin $PythonBin -ChromeBin $ChromeBin -CdpPort $CdpPort -ProfileDirectory $ProfileDirectory -DurationSeconds $DurationSeconds
+    & $browserLauncher -PythonBin $PythonBin -ChromeBin $ChromeBin -CdpPort $CdpPort -ProfileDirectory $ProfileDirectory -DurationSeconds $DurationSeconds -CyberArkTerminalUrlPattern $CyberArkBrowserUrlPattern -CyberArkTerminalSelector $CyberArkBrowserSelector -CyberArkTerminalShell $CyberArkBrowserShell
 } finally {
     if ($desktopProcess -and -not $desktopProcess.HasExited) {
         Stop-Process -Id $desktopProcess.Id -ErrorAction SilentlyContinue
