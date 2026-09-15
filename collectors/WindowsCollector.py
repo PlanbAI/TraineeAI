@@ -10,6 +10,8 @@ from ctypes import wintypes
 from datetime import datetime, timezone
 from pathlib import Path
 
+from collectors import configure_stdio_utf8
+
 
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 OUTPUT_FILE = Path("events.jsonl")
@@ -92,6 +94,8 @@ def main() -> None:
         parser.error("WindowsCollector.py must run on Windows")
     if args.interval <= 0:
         parser.error("--interval must be greater than zero")
+
+    configure_stdio_utf8()
 
     print(f"Windows collector output: {args.output.resolve()}")
     print("Press Ctrl+C to stop.")

@@ -153,6 +153,7 @@ def run_collectors(args: argparse.Namespace) -> int:
     environment = os.environ.copy()
     environment["CDP_HOST"] = "127.0.0.1"
     environment["CDP_PORT"] = str(args.cdp_port)
+    environment["PYTHONIOENCODING"] = "utf-8"
     if args.cyberark_browser_url_pattern and args.cyberark_browser_selector:
         environment["CYBERARK_TERMINAL_URL_PATTERN"] = args.cyberark_browser_url_pattern
         environment["CYBERARK_TERMINAL_SELECTOR"] = args.cyberark_browser_selector
