@@ -122,7 +122,35 @@ class WNDCLASSW(ctypes.Structure):
 
 
 def now_iso() -> str:
-    return datetime.now(timezone.utc).astimezone().isoformat(timespec="milliseconds")
+    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def key_name(vk_code: int) -> str:
+    named_keys = {
+        VK_BACK: "Backspace",
+        0x09: "Tab",
+        VK_RETURN: "Enter",
+        VK_SHIFT: "Shift",
+        VK_CONTROL: "Ctrl",
+        VK_MENU: "Alt",
+        0x1B: "Escape",
+        0x20: "Space",
+        0x21: "PageUp",
+        0x22: "PageDown",
+        0x23: "End",
+        0x24: "Home",
+        0x25: "Left",
+        0x26: "Up",
+        0x27: "Right",
+        0x28: "Down",
+        0x2D: "Insert",
+        0x2E: "Delete",
+    }
+    if 0x30 <= vk_code <= 0x39 or 0x41 <= vk_code <= 0x5A:
+        return chr(vk_code)
+    if 0x70 <= vk_code <= 0x87:
+        return f"F{vk_code - 0x6F}"
+    return named_keys.get(vk_code, f"VK_{vk_code:02X}")
 
 
 def process_name(pid: int) -> str | None:
@@ -218,7 +246,7 @@ class RdpRecorder:
             "timestamp": now_iso(),
             "type": event_type,
             "source": "desktop",
-            "application": {"name": "mstsc.exe", "pid": context["pid"]},
+            "application": {"name": context.get("process") or "mstsc.exe", "pid": context["pid"]},
             "window": {
                 "id": context["id"],
                 "title": context["title"],
@@ -286,7 +314,11 @@ class RdpRecorder:
         if is_down and modifiers["ctrl"] and vk_code == VK_V:
             self.paste_key_active = True
             self.command_buffer.append("<PASTED_CONTENT_NOT_CAPTURED>")
-            self.emit("rdp.paste_detected", context, input={"kind": "paste", "modifiers": modifiers})
+            self.emit(
+                "rdp.paste_detected",
+                context,
+                input={"kind": "paste", "key_name": key_name(vk_code), "modifiers": modifiers},
+            )
             return
         if is_up and vk_code == VK_V and self.paste_key_active:
             self.paste_key_active = False
@@ -297,6 +329,7 @@ class RdpRecorder:
             input={
                 "kind": "key",
                 "action": "down" if is_down else "up",
+                "key_name": key_name(vk_code),
                 "vk_code": vk_code,
                 "scan_code": scan_code,
                 "modifiers": modifiers,

@@ -11,6 +11,7 @@ import subprocess
 import sys
 import time
 from ctypes import wintypes
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -19,10 +20,19 @@ STATE_FILE = ROOT_DIR / "windows-collectors-state.json"
 LOG_FILE = ROOT_DIR / "windows-collectors.log"
 
 
-def log(message: str) -> None:
-    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+def now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def log(message: str, output=None) -> None:
+    timestamp = now_iso()
+    line = f"{timestamp} {message}\n"
+    if output is not None:
+        output.write(line)
+        output.flush()
+        return
     with LOG_FILE.open("a", encoding="utf-8") as handle:
-        handle.write(f"{timestamp} {message}\n")
+        handle.write(line)
 
 
 def cdp_ready(port: int) -> bool:
@@ -99,10 +109,12 @@ def stop_collectors() -> int:
     return 0
 
 
-def start_process(arguments: list[str], environment: dict[str, str], output) -> subprocess.Popen:
+def start_process(
+    arguments: list[str], environment: dict[str, str], output, cwd: Path = ROOT_DIR
+) -> subprocess.Popen:
     return subprocess.Popen(
         arguments,
-        cwd=ROOT_DIR,
+        cwd=cwd,
         env=environment,
         stdout=output,
         stderr=subprocess.STDOUT,
@@ -134,10 +146,10 @@ def run_collectors(args: argparse.Namespace) -> int:
     rdp_collector = ROOT_DIR / "collectors" / "WindowsRdpCollector.py"
     cyberark_collector = ROOT_DIR / "collectors" / "WindowsCyberArkCollector.py"
     browser_collector = ROOT_DIR / "collectors" / "BrowserCollector.py"
-    for collector in (desktop_collector, rdp_collector, cyberark_collector, browser_collector):
+    keyboard_collector = ROOT_DIR / "collectors" / "KeyboardCollector.py"
+    for collector in (desktop_collector, rdp_collector, cyberark_collector, browser_collector, keyboard_collector):
         if not collector.is_file():
             raise RuntimeError(f"Collector was not found: {collector}")
-
     environment = os.environ.copy()
     environment["CDP_HOST"] = "127.0.0.1"
     environment["CDP_PORT"] = str(args.cdp_port)
@@ -147,6 +159,7 @@ def run_collectors(args: argparse.Namespace) -> int:
         environment["CYBERARK_TERMINAL_SHELL"] = args.cyberark_browser_shell
     processes: list[subprocess.Popen] = []
     started_browser: subprocess.Popen | None = None
+    kb_collector_process: subprocess.Popen | None = None
     stop_requested = False
 
     def request_stop(_signal: int, _frame: object) -> None:
@@ -158,7 +171,7 @@ def run_collectors(args: argparse.Namespace) -> int:
 
     try:
         with LOG_FILE.open("a", encoding="utf-8") as output:
-            log("Starting Windows desktop, browser, and RDP collectors.")
+            log("Starting Windows desktop, browser, RDP, and keyboard collectors.")
             processes.append(start_process(
                 [sys.executable, str(desktop_collector), "--output", args.desktop_output, "--interval", str(args.desktop_interval)],
                 environment,
@@ -193,6 +206,8 @@ def run_collectors(args: argparse.Namespace) -> int:
                     "--remote-debugging-address=127.0.0.1",
                     f"--remote-debugging-port={args.cdp_port}",
                     f"--user-data-dir={profile_directory}",
+                    "--new-window",
+                    "about:blank",
                     "--no-first-run",
                     "--no-default-browser-check",
                 ], cwd=ROOT_DIR)
@@ -208,6 +223,26 @@ def run_collectors(args: argparse.Namespace) -> int:
             if processes[-1].poll() is not None:
                 raise RuntimeError(f"Browser collector exited immediately. See {LOG_FILE}")
 
+            if not args.no_keyboard_collector:
+                keyboard_output_path = Path(args.keyboard_output).resolve()
+                keyboard_output_path.parent.mkdir(parents=True, exist_ok=True)
+                kb_collector_process = start_process(
+                    [
+                        sys.executable,
+                        str(keyboard_collector),
+                        "--output",
+                        str(keyboard_output_path),
+                        "--quiet",
+                    ],
+                    environment,
+                    output,
+                )
+                processes.append(kb_collector_process)
+                time.sleep(1)
+                if kb_collector_process.poll() is not None:
+                    raise RuntimeError(f"Keyboard collector exited immediately. See {LOG_FILE}")
+                log(f"Keyboard collector started. Output: {keyboard_output_path}")
+
         state = {
             "manager_pid": os.getpid(),
             "processes": [
@@ -219,6 +254,8 @@ def run_collectors(args: argparse.Namespace) -> int:
         }
         if started_browser:
             state["processes"].append({"name": "cdp_browser", "pid": started_browser.pid})
+        if kb_collector_process:
+            state["processes"].append({"name": "keyboard", "pid": kb_collector_process.pid})
         STATE_FILE.write_text(json.dumps(state, indent=2), encoding="utf-8")
         log(f"Windows collectors started. State: {STATE_FILE}")
 
@@ -255,6 +292,16 @@ def main() -> int:
     parser.add_argument("--cyberark-browser-url-pattern")
     parser.add_argument("--cyberark-browser-selector")
     parser.add_argument("--cyberark-browser-shell", choices=("unknown", "powershell", "bash"), default="unknown")
+    parser.add_argument(
+        "--no-keyboard-collector",
+        action="store_true",
+        help="Do not start the local keyboard collector (it runs by default; use only synthetic or public data).",
+    )
+    parser.add_argument(
+        "--keyboard-output",
+        default="keyboard-events.jsonl",
+        help="Output file for the local keyboard collector.",
+    )
     parser.add_argument("--record-mouse-moves", action="store_true")
     parser.add_argument("--record-injected-key-events", action="store_true")
     args = parser.parse_args()

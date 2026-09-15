@@ -76,6 +76,8 @@ try {
             "--remote-debugging-address=127.0.0.1",
             "--remote-debugging-port=$CdpPort",
             "--user-data-dir=$ProfileDirectory",
+            "--new-window",
+            "about:blank",
             "--no-first-run",
             "--no-default-browser-check"
         )

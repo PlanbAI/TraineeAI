@@ -28,7 +28,7 @@ def _parse_timestamp(value: str | None) -> tuple[str, float]:
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         dt = dt.astimezone(timezone.utc)
-    return dt.isoformat().replace("+00:00", "Z"), dt.timestamp()
+    return dt.isoformat(timespec="milliseconds").replace("+00:00", "Z"), dt.timestamp()
 
 
 def _entity_values(*values: object) -> list[dict[str, str]]:

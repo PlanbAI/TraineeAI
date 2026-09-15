@@ -146,6 +146,8 @@ mkdir -p "$CDP_PROFILE_DIR"
   --remote-debugging-address=127.0.0.1 \
   --remote-debugging-port="$CDP_PORT" \
   --user-data-dir="$CDP_PROFILE_DIR" \
+  --new-window \
+  about:blank \
   --no-first-run \
   --no-default-browser-check \
   >/tmp/traineeai-chrome.log 2>&1 &

@@ -81,4 +81,9 @@ This document lists only functionality implemented in the current alpha release.
 - **FR-22.** Необязательный PowerShell audit-скрипт может выполняться в явно авторизованной удаленной сессии и записывать отправленные PowerShell-команды в удаленный JSONL-файл. Он не собирает вывод терминала, содержимое экрана или буфера обмена и не передает файл автоматически.
 
 - **FR-23.** Opt-in browser capture can create `cyberark.command_submitted` events for an explicitly configured CyberArk HTML5 terminal URL pattern and terminal CSS selector. It is disabled unless both values are provided.
+
+- **FR-24.** Browser launchers start a visible, non-headless Chrome, Chromium, or Edge window. Collector processes may run in the background, but the browser window remains available for interactive work.
+- **FR-24.** Browser-лаунчеры запускают видимое, не-headless окно Chrome, Chromium или Edge. Процессы коллекторов могут работать в фоне, но окно браузера остается доступным для интерактивной работы.
+- **FR-25.** Collector events and Windows collector-manager logs use UTC ISO 8601 timestamps with millisecond precision, so events from separate logs can be correlated.
+- **FR-25.** События коллекторов и журнал Windows collector-manager используют UTC ISO 8601 timestamp с точностью до миллисекунд, чтобы сопоставлять события из разных логов.
 - **FR-23.** Opt-in browser-сбор может создавать события `cyberark.command_submitted` для явно настроенных URL-pattern и CSS selector терминала CyberArk HTML5. Он выключен, пока не переданы оба значения.

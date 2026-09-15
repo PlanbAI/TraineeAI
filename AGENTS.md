@@ -22,7 +22,7 @@ From the repository root, start all standard Windows collectors in the backgroun
 scripts\start_windows_collectors.cmd
 ```
 
-- The launcher starts desktop, browser, and waiting RDP and CyberArk collectors, then returns immediately without blocking OpenCode. Stop them with `scripts\stop_windows_collectors.cmd`.
+- The launcher starts desktop, browser, and waiting RDP and CyberArk collector processes, opens a visible browser window, then returns immediately without blocking OpenCode. Stop them with `scripts\stop_windows_collectors.cmd`.
 - Inspect `windows-collectors.log` if the background launcher fails or a collector stops unexpectedly.
 - It uses `.venv\Scripts\python.exe` when present, otherwise `python` from `PATH`.
 - The browser launcher finds Chrome or Edge automatically. If it cannot, pass the installed executable through `--chrome-bin` to `scripts\start_windows_collectors.cmd`.
@@ -37,6 +37,7 @@ scripts\start_windows_collectors.cmd
 - For keyboard-capture diagnostics, pass `--record-injected-key-events` to `scripts\start_windows_collectors.cmd`; it does not allow clipboard capture.
 - The CyberArk collector waits for common PSM client processes and writes `cyberark-events.jsonl` only for its selected window. Pass `--cyberark-process-name client.exe` when CyberArk uses another executable.
 - The CyberArk collector uses Windows Raw Input for physical keyboard events; it remains restricted to the selected PSM window.
+- The unified launcher starts the local keyboard collector by default and writes `keyboard-events.jsonl`. It observes all local keyboard input; pass `--no-keyboard-collector` to `scripts\start_windows_collectors.cmd` to disable it, and must be stopped before entering credentials, tokens, or other secrets.
 - To validate Raw Input locally without CyberArk, run `python scripts\test_cyberark_raw_input.py` and use only the synthetic `rawinput-test` input in the Notepad test window.
 - For a native PSM client that suppresses local input, the optional `scripts\remote\Enable-TraineePowerShellAudit.ps1` runs inside an explicitly authorized remote PowerShell test session. It records commands only and never transfers the remote audit file automatically.
 - For a CyberArk HTML5 client, pass both `--cyberark-browser-url-pattern` and `--cyberark-browser-selector` to `scripts\start_windows_collectors.cmd`. Require an exact terminal canvas selector, never a credential-entry element.

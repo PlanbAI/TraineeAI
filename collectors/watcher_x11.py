@@ -1,5 +1,5 @@
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 from Xlib import X, display
 from Xlib.ext import xprop
@@ -65,7 +65,7 @@ def main():
                 title = get_window_title(window)
                 pid = get_pid(window)
 
-                timestamp = datetime.now().isoformat(timespec="seconds")
+                timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
                 print(
                     f"{timestamp} | "

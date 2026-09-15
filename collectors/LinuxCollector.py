@@ -29,7 +29,7 @@ write_lock = threading.Lock()
 
 
 def now_iso() -> str:
-    return datetime.now(timezone.utc).astimezone().isoformat(timespec="milliseconds")
+    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 def read_process_name(pid: Optional[int]) -> Optional[str]:

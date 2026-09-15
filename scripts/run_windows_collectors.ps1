@@ -17,6 +17,7 @@ param(
     [string]$CyberArkBrowserSelector,
     [ValidateSet("unknown", "powershell", "bash")]
     [string]$CyberArkBrowserShell = "unknown",
+    [switch]$NoKeyboardCollector,
     [switch]$RecordMouseMoves,
     [switch]$RecordInjectedKeyEvents
 )
@@ -26,10 +27,13 @@ $rootDir = Split-Path -Parent $PSScriptRoot
 $desktopCollector = Join-Path $rootDir "collectors\WindowsCollector.py"
 $rdpCollector = Join-Path $rootDir "collectors\WindowsRdpCollector.py"
 $cyberarkCollector = Join-Path $rootDir "collectors\WindowsCyberArkCollector.py"
+$keyboardCollector = Join-Path $rootDir "collectors\KeyboardCollector.py"
+$keyboardOutput = Join-Path $rootDir "keyboard-events.jsonl"
 $browserLauncher = Join-Path $PSScriptRoot "run_browser_collector.ps1"
 $desktopProcess = $null
 $rdpProcess = $null
 $cyberarkProcess = $null
+$keyboardProcess = $null
 
 if (-not (Test-Path -LiteralPath $desktopCollector)) {
     throw "Windows collector was not found: $desktopCollector"
@@ -43,6 +47,9 @@ if (-not (Test-Path -LiteralPath $cyberarkCollector)) {
 if (-not (Test-Path -LiteralPath $browserLauncher)) {
     throw "Browser collector launcher was not found: $browserLauncher"
 }
+if (-not $NoKeyboardCollector -and -not (Test-Path -LiteralPath $keyboardCollector)) {
+    throw "Keyboard collector was not found: $keyboardCollector"
+}
 if ($DesktopInterval -le 0) {
     throw "DesktopInterval must be greater than zero."
 }
@@ -53,7 +60,7 @@ if (-not $PythonBin) {
 }
 
 try {
-    Write-Host "Starting Windows desktop, browser, RDP, and CyberArk collectors. Press Ctrl+C to stop all."
+    Write-Host "Starting Windows desktop, browser, RDP, CyberArk, and keyboard collectors. Press Ctrl+C to stop all."
     Write-Host "Desktop events: $(Join-Path $rootDir $DesktopOutput)"
     Write-Host "RDP events: $(Join-Path $rootDir $RdpOutput)"
     Write-Host "CyberArk events: $(Join-Path $rootDir $CyberArkOutput)"
@@ -85,6 +92,15 @@ try {
         throw "CyberArk collector exited immediately with code $($cyberarkProcess.ExitCode)."
     }
 
+    if (-not $NoKeyboardCollector) {
+        $keyboardProcess = Start-Process -FilePath $PythonBin -ArgumentList $keyboardCollector, "--output", $keyboardOutput, "--quiet" -WorkingDirectory $rootDir -PassThru -NoNewWindow
+        Start-Sleep -Seconds 1
+        if ($keyboardProcess.HasExited) {
+            throw "Keyboard collector exited immediately with code $($keyboardProcess.ExitCode)."
+        }
+        Write-Host "Keyboard collector: $keyboardOutput"
+    }
+
     & $browserLauncher -PythonBin $PythonBin -ChromeBin $ChromeBin -CdpPort $CdpPort -ProfileDirectory $ProfileDirectory -DurationSeconds $DurationSeconds -CyberArkTerminalUrlPattern $CyberArkBrowserUrlPattern -CyberArkTerminalSelector $CyberArkBrowserSelector -CyberArkTerminalShell $CyberArkBrowserShell
 } finally {
     if ($desktopProcess -and -not $desktopProcess.HasExited) {
@@ -95,5 +111,8 @@ try {
     }
     if ($cyberarkProcess -and -not $cyberarkProcess.HasExited) {
         Stop-Process -Id $cyberarkProcess.Id -ErrorAction SilentlyContinue
+    }
+    if ($keyboardProcess -and -not $keyboardProcess.HasExited) {
+        Stop-Process -Id $keyboardProcess.Id -ErrorAction SilentlyContinue
     }
 }

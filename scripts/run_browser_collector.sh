@@ -73,6 +73,8 @@ if ! cdp_ready; then
     --remote-debugging-address=127.0.0.1 \
     --remote-debugging-port="$CDP_PORT" \
     --user-data-dir="$CDP_PROFILE_DIR" \
+    --new-window \
+    about:blank \
     --no-first-run \
     --no-default-browser-check \
     >/tmp/traineeai-browser.log 2>&1 &

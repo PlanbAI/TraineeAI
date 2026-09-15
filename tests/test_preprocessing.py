@@ -31,6 +31,17 @@ class NormalizeTests(unittest.TestCase):
         self.assertEqual(enriched[1].window_title, "Jira - ABC-123")
         self.assertIn({"type": "jira_issue_id", "value": "ABC-123"}, enriched[1].entities)
 
+    def test_normalizes_timestamps_to_milliseconds(self):
+        event = normalize_browser(
+            {
+                "timestamp": "2026-08-28T12:00:00.123456Z",
+                "type": "click",
+                "page": {"url": "https://example.test"},
+            }
+        )
+
+        self.assertEqual(event.timestamp, "2026-08-28T12:00:00.123Z")
+
     def test_redacts_sensitive_browser_field_in_analysis_output(self):
         event = normalize_browser(
             {

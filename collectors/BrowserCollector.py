@@ -37,6 +37,10 @@ LISTENER_JS = (
 )
 
 
+def now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
 class LocalWebSocket:
     """Minimal WebSocket client for the local Chrome DevTools endpoint."""
 
@@ -140,9 +144,7 @@ class LocalWebSocket:
 
 
 def write_event(event):
-    event["_collector_timestamp"] = datetime.now(
-        timezone.utc
-    ).isoformat()
+    event["_collector_timestamp"] = now_iso()
 
     line = json.dumps(
         event,
@@ -262,9 +264,7 @@ class CDPConnection:
                     if not frame.get("parentId"):
                         write_event({
                             "type": "page_navigation",
-                            "timestamp": datetime.now(
-                                timezone.utc
-                            ).isoformat(),
+                            "timestamp": now_iso(),
                             "page": {
                                 "url": frame.get("url"),
                                 "name": frame.get("name")

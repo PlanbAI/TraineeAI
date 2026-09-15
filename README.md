@@ -32,7 +32,7 @@ See [Functional Requirements](docs/functional-requirements.md) for implemented p
 
 ### Windows
 
-Run these commands in Command Prompt to start the Windows desktop, browser, and waiting RDP and CyberArk collectors in the background without PowerShell.
+Run these commands in Command Prompt to start the Windows collector processes in the background without PowerShell. A dedicated visible browser window opens for interactive work.
 
 ```bat
 git clone --branch aplha-version https://github.com/PlanbAI/TraineeAI.git
@@ -108,7 +108,7 @@ This writes `browser-events.jsonl` in the repository root. To connect to an alre
 
 ### Windows Capture
 
-From the repository root, start the Windows desktop collector, the browser collector with its dedicated Chrome, Chromium, or Edge profile, and the waiting RDP and CyberArk collectors in the background without PowerShell:
+From the repository root, start the Windows desktop collector, a visible browser window with a dedicated Chrome, Chromium, or Edge profile, and the waiting RDP and CyberArk collectors without PowerShell:
 
 ```bat
 scripts\start_windows_collectors.cmd
@@ -116,11 +116,17 @@ scripts\start_windows_collectors.cmd
 
 Perform the workflow in the browser window started by the script. Stop the collectors with `scripts\stop_windows_collectors.cmd`, then run the manual analysis command below. The RDP collector waits until an `mstsc.exe` window becomes active, selects that window, and records only its input. Start the launcher only after RDP authentication and do not enter secrets while recording. The Windows desktop collector records foreground-window changes only: application name, executable path, PID, window class, title, and window ID. It does not yet collect Windows UI Automation control-level events.
 
-RDP mouse movement is not logged by default. To restore detailed mouse movement logging, add `--record-mouse-moves` to `scripts\start_windows_collectors.cmd` or `-RecordMouseMoves` to either PowerShell RDP launcher.
+`events.jsonl` contains desktop focus changes only. Keyboard and mouse input for an RDP client is written to `rdp-events.jsonl`; CyberArk PSM input is written to `cyberark-events.jsonl`.
+
+RDP mouse movement is not logged by default. To restore detailed mouse movement logging, add `--record-mouse-moves` to `scripts\start_windows_collectors.cmd` or `-RecordMouseMoves` to either PowerShell RDP launcher. Keyboard `rdp.input` events include a readable `key_name` alongside their virtual-key and scan codes; submitted commands remain subject to redaction.
+
+All collector events and `windows-collectors.log` use UTC ISO 8601 timestamps with millisecond precision, for example `2026-09-14T16:42:50.653Z`.
 
 For a keyboard-capture diagnostic, add `--record-injected-key-events` to `scripts\start_windows_collectors.cmd` or `-RecordInjectedKeyEvents` to either PowerShell RDP launcher. This records synthetic keyboard events that are normally ignored; it does not read clipboard contents.
 
 The CyberArk collector writes `cyberark-events.jsonl` only after it selects an active PSM client window. It uses Windows Raw Input for physical keyboard events, which helps when a PSM client does not expose keys through a low-level hook. It waits for common PSM executable names by default. If the client uses another executable, pass `--cyberark-process-name client.exe` to `scripts\start_windows_collectors.cmd` or run `scripts\run_cyberark_recorder.ps1 -ProcessName client.exe`.
+
+The unified launcher starts a local keyboard collector by default and writes `keyboard-events.jsonl`. `scripts\stop_windows_collectors.cmd` stops it together with the other collectors. This hook observes all local keyboard input, so use only public or synthetic data and stop it before entering credentials, tokens, or other secrets. To disable it, pass `--no-keyboard-collector` to `scripts\start_windows_collectors.cmd`.
 
 To test the Raw Input path locally without CyberArk, run `python scripts\test_cyberark_raw_input.py`, type `rawinput-test` into the Notepad window it opens, and return to the terminal. The script passes only when it finds keyboard events with `capture_source: "raw_input"`.
 
