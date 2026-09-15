@@ -141,6 +141,7 @@ class KeyboardRecorder:
         self._phrase_chars: list[str] = []
         self._phrase_start = 0.0
         self._last_text_time = 0.0
+        self._phrase_window = None
         self._raw_file = None
 
     def emit(self, event_type: str, **extra: object) -> None:
@@ -214,10 +215,22 @@ class KeyboardRecorder:
         ).replace("+00:00", "Z")
         self._phrase_chars.clear()
         self._phrase_start = 0.0
-        self.emit("keyboard.phrase_submitted", text=text, phrase_start=start)
+        self.emit("keyboard.phrase_submitted", text=text, words=text.split(), phrase_start=start)
+
+    def flush_pending(self) -> None:
+        """Called by the message-loop timer, even when no keys arrive."""
+        if self._phrase_chars and (
+            time.monotonic() - self._last_text_time >= self.phrase_timeout
+            or self.user32.GetForegroundWindow() != self._phrase_window
+        ):
+            self.close_phrase()
 
     def handle_key(self, vk_code: int, scan_code: int, is_down: bool, is_up: bool) -> None:
         self._update_kb_state(vk_code, is_up)
+        # Key releases update modifiers but must not decode or duplicate text.
+        if not is_down or is_up:
+            return
+        self.flush_pending()
         char, is_dead = self._decode_char(vk_code, scan_code)
         modifiers = self.modifier_state()
         now = time.monotonic()
@@ -244,7 +257,12 @@ class KeyboardRecorder:
         if not is_up:
             if self._phrase_chars and now - self._last_text_time > self.phrase_timeout:
                 self.close_phrase()
-            if vk_code == VK_RETURN:
+            altgr = bool(self._kb_state[VK_RMENU] & 0x80)
+            shortcut = (
+                (modifiers["ctrl"] or modifiers["alt"]) and not altgr
+            ) or bool(self._kb_state[VK_LWIN] & 0x80 or self._kb_state[VK_RWIN] & 0x80)
+            if vk_code in (VK_RETURN, VK_TAB, 0x1B, 0x21, 0x22, 0x23, 0x24,
+                           0x25, 0x26, 0x27, 0x28, 0x2D, 0x2E) or shortcut:
                 self.close_phrase()
                 self._last_text_time = now
                 return
@@ -255,13 +273,12 @@ class KeyboardRecorder:
                     self._phrase_start = 0.0
                 self._last_text_time = now
                 return
-            if vk_code == VK_TAB and char is None:
-                char = "\t"
             if char is None or is_dead:
                 return
             if not self._phrase_chars:
                 self._phrase_start = time.time()
-            self._phrase_chars.append(char)
+                self._phrase_window = self.user32.GetForegroundWindow()
+            self._phrase_chars.extend(char)
             self._last_text_time = now
 
     def keyboard_proc(self, code: int, message: int, data: int) -> int:
@@ -302,11 +319,20 @@ class KeyboardRecorder:
         print(f"Keyboard collector output: {self.output.resolve()}", flush=True)
         print("KBD hook active. Ctrl+C stops. Do not record passwords, tokens, or other secrets.", flush=True)
         message = wintypes.MSG()
+        self.user32.SetTimer.argtypes = (wintypes.HWND, ctypes.c_size_t, wintypes.UINT, ctypes.c_void_p)
+        self.user32.SetTimer.restype = ctypes.c_size_t
+        self.user32.KillTimer.argtypes = (wintypes.HWND, ctypes.c_size_t)
+        timer = self.user32.SetTimer(None, 0, 50, None)
         try:
+            if not timer:
+                raise OSError("Unable to install the phrase timeout timer")
             while self.user32.GetMessageW(ctypes.byref(message), None, 0, 0) > 0:
+                self.flush_pending()
                 self.user32.TranslateMessage(ctypes.byref(message))
                 self.user32.DispatchMessageW(ctypes.byref(message))
         finally:
+            if timer:
+                self.user32.KillTimer(None, timer)
             if self.keyboard_hook:
                 self.user32.UnhookWindowsHookEx(self.keyboard_hook)
             self.close_phrase()
