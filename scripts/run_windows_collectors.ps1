@@ -19,7 +19,10 @@ param(
     [string]$CyberArkBrowserShell = "unknown",
     [switch]$NoKeyboardCollector,
     [switch]$RecordMouseMoves,
-    [switch]$RecordInjectedKeyEvents
+    [switch]$RecordInjectedKeyEvents,
+    [string]$ScreenshotDir,
+    [string]$OcrLanguage,
+    [switch]$NoScreenshots
 )
 
 $ErrorActionPreference = "Stop"
@@ -71,6 +74,14 @@ try {
     }
     if ($RecordInjectedKeyEvents) {
         $rdpArguments += "--record-injected-key-events"
+    }
+    if ($NoScreenshots) {
+        $rdpArguments += "--no-screenshots"
+    } elseif ($ScreenshotDir) {
+        $rdpArguments += @("--screenshot-dir", (Join-Path $rootDir $ScreenshotDir))
+        if ($OcrLanguage) {
+            $rdpArguments += @("--ocr-language", $OcrLanguage)
+        }
     }
     $rdpProcess = Start-Process -FilePath $PythonBin -ArgumentList $rdpArguments -WorkingDirectory $rootDir -PassThru -NoNewWindow
     $cyberarkArguments = @($cyberarkCollector, "--output", $CyberArkOutput, "--shell", $CyberArkShell)

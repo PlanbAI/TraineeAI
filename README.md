@@ -114,11 +114,13 @@ From the repository root, start the Windows desktop collector, a visible browser
 scripts\start_windows_collectors.cmd
 ```
 
-Perform the workflow in the browser window started by the script. Stop the collectors with `scripts\stop_windows_collectors.cmd`, then run the manual analysis command below. The RDP collector waits until an `mstsc.exe` window becomes active, selects that window, and records only its input. Start the launcher only after RDP authentication and do not enter secrets while recording. The Windows desktop collector records foreground-window changes only: application name, executable path, PID, window class, title, and window ID. It does not yet collect Windows UI Automation control-level events.
+Perform the workflow in the browser window started by the script. Stop the collectors with `scripts\stop_windows_collectors.cmd`, then run the manual analysis command below. The RDP collector waits until an `mstsc.exe` window becomes active, selects that window, and records only its input. Start the launcher only after RDP authentication and avoid entering secrets while recording. The Windows desktop collector records foreground-window changes only: application name, executable path, PID, window class, title, and window ID. It does not yet collect Windows UI Automation control-level events.
 
-`events.jsonl` contains desktop focus changes only. Keyboard and mouse input for an RDP client is written to `rdp-events.jsonl`; CyberArk PSM input is written to `cyberark-events.jsonl`.
+`events.jsonl` contains desktop focus changes only. Keyboard and mouse input for an RDP client is written to `rdp-events.jsonl`; CyberArk PSM input is written to `cyberark-events.jsonl`; the local keyboard collector writes `keyboard-events.jsonl`.
 
 RDP mouse movement is not logged by default. To restore detailed mouse movement logging, add `--record-mouse-moves` to `scripts\start_windows_collectors.cmd` or `-RecordMouseMoves` to either PowerShell RDP launcher. Keyboard `rdp.input` events include a readable `key_name` alongside their virtual-key and scan codes; submitted commands remain subject to redaction.
+
+The RDP recorder can capture the selected window as PNG screenshots and recognize text with local Windows OCR for applications that block input/output capture (e.g. remote desktops). Screenshots are rate-limited to 2 frames per second, pixel-identical frames are stored once, and recognized text is written next to each PNG. Add `--screenshot-dir DIR` and `--ocr-language en-US` to `scripts\start_windows_collectors.cmd` to enable it, or `--no-screenshots` to disable it. Events are emitted as `app.screen_text` alongside `rdp.command_submitted`. See the FR-27 entry in `docs/functional-requirements.md` for full triggering rules.
 
 All collector events and `windows-collectors.log` use UTC ISO 8601 timestamps with millisecond precision, for example `2026-09-14T16:42:50.653Z`.
 
@@ -142,7 +144,7 @@ Do not use a selector that matches login forms or other credential-entry element
 
 ### Windows RDP Recording And Replay
 
-The RDP alpha records input only for one explicitly selected Microsoft Remote Desktop (`mstsc.exe`) window. Start recording after signing in to the remote system and stop it before entering credentials or secrets.
+The RDP alpha records one explicitly selected Microsoft Remote Desktop (`mstsc.exe`) window. Start recording after signing in to the remote system; the recorder may capture window screenshots with local OCR. Avoid entering credentials or secrets while recording.
 
 ```powershell
 .\scripts\run_rdp_recorder.ps1 -WindowTitle "server-01" -Shell powershell -Output rdp-events.jsonl

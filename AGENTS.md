@@ -32,8 +32,9 @@ scripts\start_windows_collectors.cmd
 .\scripts\run_windows_collectors.ps1
 ```
 
-- The RDP recorder observes physical keyboard and mouse input. For RDP capture, start the launcher only after RDP authentication and stop it before entering passwords, tokens, or other secrets.
+- The RDP recorder observes physical keyboard and mouse input. For RDP capture, start the launcher only after RDP authentication. It may capture window screenshots with local OCR; commands and fields containing secret markers are redacted, but avoid entering secrets while recording.
 - RDP collection logs only button-down mouse coordinates by default. Pass `--record-mouse-moves` to `scripts\start_windows_collectors.cmd` only when detailed mouse movement is required.
+- The RDP recorder can capture the selected window as PNG screenshots and recognize on-screen text via local Windows OCR (`app.screen_text`, max 2 fps, deduplicated, `.txt` next to each PNG). Control capture with `--screenshot-dir DIR`, `--ocr-language en-US`, or `--no-screenshots` on the launcher.
 - For keyboard-capture diagnostics, pass `--record-injected-key-events` to `scripts\start_windows_collectors.cmd`; it does not allow clipboard capture.
 - The CyberArk collector waits for common PSM client processes and writes `cyberark-events.jsonl` only for its selected window. Pass `--cyberark-process-name client.exe` when CyberArk uses another executable.
 - The CyberArk collector uses Windows Raw Input for physical keyboard events; it remains restricted to the selected PSM window.

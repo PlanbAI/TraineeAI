@@ -25,11 +25,11 @@ TraineeAI records and replays input sent from a local Windows 10 or 11 machine t
 - A terminal-like command buffer produces `rdp.command_submitted` after Enter. It labels commands as PowerShell, Bash, or unknown according to user configuration.
 - Commands containing common secret markers are redacted before they are written.
 - Clipboard contents are never read. Ctrl+V is recorded only as a paste marker, and scenarios containing paste markers cannot be replayed automatically.
-- Command output, remote screen contents, and source code are not captured by the local-only alpha.
+- The recorder can capture the selected window as PNG screenshots and recognize on-screen text with the local Windows OCR engine. Screenshot capture runs at most twice per second and deduplicates pixel-identical frames; recognized text is written next to each PNG. Screenshots are disabled with `--no-screenshots`.
 
 ## Known Limits
 
-- The local client cannot distinguish a remote terminal from a remote password prompt. Users must start recording only after authentication and stop it before entering secrets.
+- The local client cannot distinguish a remote terminal from a remote password prompt. Screenshot OCR may capture on-screen secrets; commands and fields containing secret markers are redacted, and users should still avoid entering secrets while recording.
 - Replay is sensitive to RDP client size, DPI, keyboard layout, remote UI state, and network delay. The recorder stores client size; replay rejects a size mismatch unless explicitly overridden.
 - The local client cannot confirm that a remote application processed an action. A future optional user-level remote agent can provide execution confirmation and richer PowerShell/Bash semantics.
 

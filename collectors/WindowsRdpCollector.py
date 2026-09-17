@@ -12,6 +12,12 @@ from ctypes import wintypes
 from datetime import datetime, timezone
 from pathlib import Path
 
+if str(Path(__file__).resolve().parents[1]) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from collectors.WindowScreenCapture import WindowScreenCapture
+from collectors.WindowOcr import create_ocr
+
 
 WH_KEYBOARD_LL = 13
 WH_MOUSE_LL = 14
@@ -29,6 +35,7 @@ WM_MBUTTONDOWN = 0x0207
 WM_MBUTTONUP = 0x0208
 WM_MOUSEWHEEL = 0x020A
 WM_QUIT = 0x0012
+WM_TIMER = 0x0113
 WM_INPUT = 0x00FF
 LLKHF_INJECTED = 0x10
 LLMHF_INJECTED = 0x00000001
@@ -47,6 +54,7 @@ VK_MENU = 0x12
 VK_V = 0x56
 VK_F11 = 0x7A
 VK_F12 = 0x7B
+SCREENSHOT_POLL_INTERVAL_MS = 250
 SENSITIVE_COMMAND_RE = re.compile(
     r"password|passcode|secret|token|api[ _-]?key|authorization|bearer|"
     r"private[ _-]?key|credit[ _-]?card|card[ _-]?number|cvv|cvc|ssn",
@@ -197,6 +205,9 @@ class RdpRecorder:
         record_injected_key_events: bool,
         process_names: tuple[str, ...] = ("mstsc.exe",),
         use_raw_keyboard: bool = False,
+        screenshot_dir: Path | None = None,
+        ocr_language: str | None = None,
+        no_screenshots: bool = False,
     ):
         self.output = output
         self.title_substring = title_substring.casefold() if title_substring else None
@@ -205,6 +216,7 @@ class RdpRecorder:
         self.record_injected_key_events = record_injected_key_events
         self.process_names = {process_name.casefold() for process_name in process_names}
         self.use_raw_keyboard = use_raw_keyboard
+        self.no_screenshots = no_screenshots
         self.target_window_id: int | None = None
         self.command_buffer: list[str] = []
         self.paused = False
@@ -220,6 +232,41 @@ class RdpRecorder:
         self.raw_window_callback = None
         self.raw_window = None
         self.raw_window_class = None
+        self.screen_capture: WindowScreenCapture | None = None
+        self.command_counter = 0
+        self._was_foreground = False
+        if not self.no_screenshots:
+            target_dir = screenshot_dir or self.output.parent / "screenshots"
+            self.screen_capture = WindowScreenCapture(
+                target_dir,
+                recognize_text=True,
+                ocr=create_ocr(ocr_language),
+            )
+            print(f"Screen capture with OCR enabled -> {target_dir}", flush=True)
+
+    def _capture_screen(self, context: dict, trigger: str, command_id: int | None = None) -> None:
+        """Capture the selected window and emit an app.screen_text event."""
+        if self.no_screenshots or self.screen_capture is None or self.target_window_id is None:
+            return
+        payload = self.screen_capture.capture_window_forced(self.target_window_id, command_id)
+        if payload is None:
+            return
+        self.emit(
+            "app.screen_text",
+            context,
+            screen={
+                "trigger": trigger,
+                "command_id": command_id,
+                "screenshot": payload["screenshot"],
+                "screenshot_path": payload["screenshot_path"],
+                "width": payload["width"],
+                "height": payload["height"],
+                "text": payload["text"],
+                "lines": payload["lines"],
+                "duplicate": payload["duplicate"],
+                "size_bytes": payload["size_bytes"],
+            },
+        )
 
     def target_context(self) -> dict | None:
         context = window_context(self.user32.GetForegroundWindow())
@@ -338,7 +385,10 @@ class RdpRecorder:
         )
         if is_down:
             if vk_code == VK_RETURN:
+                self.command_counter += 1
+                self._capture_screen(context, "before_command", self.command_counter)
                 self.submit_command(context)
+                self._capture_screen(context, "after_command", self.command_counter)
             elif vk_code == VK_BACK:
                 if self.command_buffer:
                     self.command_buffer.pop()
@@ -481,6 +531,42 @@ class RdpRecorder:
             print(f"Mouse hook error: {error}", file=sys.stderr, flush=True)
             return self.forward_event(self.mouse_hook, code, message, data)
 
+    def _on_timer_tick(self, message: wintypes.MSG) -> None:
+        if self.no_screenshots or self.screen_capture is None or self.target_window_id is None or message.message != WM_TIMER:
+            return
+        foreground = self.user32.GetForegroundWindow()
+        is_foreground = bool(foreground) and foreground == self.target_window_id
+        if self._was_foreground and not is_foreground:
+            # Capture once when the recorded window loses focus, not on every
+            # poll tick while it stays in the background.
+            context = window_context(self.target_window_id)
+            if context:
+                self._capture_screen(context, "focus_change")
+        self._was_foreground = is_foreground
+        if is_foreground and self.use_raw_keyboard and not self.record_injected_key_events:
+            # Raw keyboard is active (no low-level hook decodes characters),
+            # so screen text is the only channel for what is being typed.
+            context = window_context(self.target_window_id)
+            if context:
+                payload = self.screen_capture.capture_window(self.target_window_id)
+                if payload is not None:
+                    self.emit(
+                        "app.screen_text",
+                        context,
+                        screen={
+                            "trigger": "keyboard_unavailable",
+                            "command_id": None,
+                            "screenshot": payload["screenshot"],
+                            "screenshot_path": payload["screenshot_path"],
+                            "width": payload["width"],
+                            "height": payload["height"],
+                            "text": payload["text"],
+                            "lines": payload["lines"],
+                            "duplicate": payload["duplicate"],
+                            "size_bytes": payload["size_bytes"],
+                        },
+                    )
+
     def run(self) -> None:
         hook_type = ctypes.WINFUNCTYPE(LRESULT, ctypes.c_int, wintypes.WPARAM, wintypes.LPARAM)
         self.mouse_callback = hook_type(self.safe_mouse_proc)
@@ -529,11 +615,15 @@ class RdpRecorder:
             raise OSError("Unable to install the RDP input hooks")
         print("RDP recording active. Ctrl+Shift+F12 pauses/resumes; Ctrl+Shift+F11 stops.")
         message = wintypes.MSG()
+        timer_id = self.user32.SetTimer(None, 0, SCREENSHOT_POLL_INTERVAL_MS, None)
         try:
             while self.user32.GetMessageW(ctypes.byref(message), None, 0, 0) > 0:
+                self._on_timer_tick(message)
                 self.user32.TranslateMessage(ctypes.byref(message))
                 self.user32.DispatchMessageW(ctypes.byref(message))
         finally:
+            if timer_id:
+                self.user32.KillTimer(None, timer_id)
             if self.keyboard_hook:
                 self.user32.UnhookWindowsHookEx(self.keyboard_hook)
             if self.mouse_hook:
@@ -551,6 +641,9 @@ def main() -> None:
     parser.add_argument("--shell", choices=("unknown", "powershell", "bash"), default="unknown")
     parser.add_argument("--record-mouse-moves", action="store_true", help="Record mouse movement and all mouse coordinates")
     parser.add_argument("--record-injected-key-events", action="store_true", help="Record injected keyboard events for diagnostics")
+    parser.add_argument("--screenshot-dir", type=Path, help="Directory for window screenshots (default: <output>/screenshots)")
+    parser.add_argument("--ocr-language", help="Windows OCR language tag, e.g. en-US or ru-RU")
+    parser.add_argument("--no-screenshots", action="store_true", help="Disable window screenshot capture with OCR")
     args = parser.parse_args()
     if sys.platform != "win32":
         parser.error("WindowsRdpCollector.py must run on Windows")
@@ -561,7 +654,16 @@ def main() -> None:
     else:
         print("RDP capture records keyboard and mouse input only for the selected mstsc window.")
     print("Do not record passwords, tokens, or other secrets.")
-    RdpRecorder(args.output, args.window_title, args.shell, args.record_mouse_moves, args.record_injected_key_events).run()
+    RdpRecorder(
+        args.output,
+        args.window_title,
+        args.shell,
+        args.record_mouse_moves,
+        args.record_injected_key_events,
+        screenshot_dir=args.screenshot_dir,
+        ocr_language=args.ocr_language,
+        no_screenshots=args.no_screenshots,
+    ).run()
 
 
 if __name__ == "__main__":

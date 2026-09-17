@@ -1,3 +1,6 @@
+import shutil
+import tempfile
+
 import ctypes
 import sys
 import unittest
@@ -18,13 +21,14 @@ from collectors.WindowsRdpCollector import (
     WM_LBUTTONUP,
     WM_MOUSEMOVE,
     WM_MOUSEWHEEL,
+    WM_TIMER,
 )
 
 
 @unittest.skipUnless(sys.platform == "win32", "Windows hook behavior is Windows-only")
 class RdpMouseRecordingTests(unittest.TestCase):
     def recorder(self, record_mouse_moves: bool, record_injected_key_events: bool = False, use_raw_keyboard: bool = False):
-        recorder = RdpRecorder(Path("unused.jsonl"), None, "unknown", record_mouse_moves, record_injected_key_events, use_raw_keyboard=use_raw_keyboard)
+        recorder = RdpRecorder(Path("unused.jsonl"), None, "unknown", record_mouse_moves, record_injected_key_events, use_raw_keyboard=use_raw_keyboard, no_screenshots=True)
         recorder.user32 = type("User32", (), {
             "CallNextHookEx": staticmethod(lambda *_: 0),
             "ScreenToClient": staticmethod(lambda *_: 1),
@@ -116,6 +120,7 @@ class RdpMouseRecordingTests(unittest.TestCase):
             False,
             True,
             ("psmrdp.exe",),
+            no_screenshots=True,
         )
         recorder.user32 = type("User32", (), {"GetForegroundWindow": staticmethod(lambda: 1)})()
         context = {"id": 1, "pid": 2, "title": "CyberArk session", "process": "PsmRdp.exe", "client_size": {"width": 1, "height": 1}}
@@ -151,3 +156,70 @@ class RdpMouseRecordingTests(unittest.TestCase):
         self.assertEqual(events[0]["key_name"], "A")
         self.assertEqual(events[0]["vk_code"], 0x41)
         self.assertEqual(events[0]["capture_source"], "raw_input")
+
+
+class RdpScreenCaptureTests(unittest.TestCase):
+    @staticmethod
+    def recorder():
+        temp_dir = Path(tempfile.mkdtemp(prefix="trainee-rdp-test-"))
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        recorder = RdpRecorder(
+            temp_dir / "unused.jsonl",
+            None,
+            "unknown",
+            False,
+            False,
+            no_screenshots=False,
+            screenshot_dir=temp_dir / "shots",
+        )
+        context = {"id": 7, "pid": 2, "title": "test", "client_size": {"width": 1, "height": 1}}
+        recorder.target_window_id = 7
+        recorder.target_context = lambda: context
+        invoked = []
+        emitted = []
+
+        def capture(_context, trigger, command_id=None):
+            invoked.append((trigger, command_id))
+            return [trigger, command_id]
+
+        def emit(event_type, _context, **extra):
+            emitted.append((event_type, extra))
+
+        recorder._capture_screen = capture
+        recorder.emit = emit
+        return recorder, context, invoked, emitted
+
+    def test_enter_emits_before_and_after_with_shared_command_id(self):
+        recorder, context, invoked, _emitted = self.recorder()
+        recorder.modifier_state = lambda: {"ctrl": False, "shift": False, "alt": False}
+        recorder.key_text = lambda *_: "a"
+        recorder.command_buffer = ["ls"]
+        recorder.user32 = type("User32", (), {"GetAsyncKeyState": staticmethod(lambda _: 0)})()
+        recorder.no_screenshots = False
+
+        key = KBDLLHOOKSTRUCT()
+        key.vkCode = 0x0D
+        key.scanCode = 0x1C
+        recorder.record_key_event(key.vkCode, key.scanCode, True, False, context)
+
+        self.assertEqual(invoked, [("before_command", 1), ("after_command", 1)])
+        self.assertEqual(recorder.command_counter, 1)
+
+    def test_timer_captures_focus_change_at_transition_only(self):
+        recorder, _context, invoked, _emitted = self.recorder()
+        foreground = [7, 8]
+        recorder.user32 = type("User32", (), {"GetForegroundWindow": staticmethod(lambda: foreground.pop(0))})()
+
+        recorder._on_timer_tick(type("MSG", (), {"message": WM_TIMER})())
+        recorder._on_timer_tick(type("MSG", (), {"message": WM_TIMER})())
+
+        self.assertEqual(invoked, [("focus_change", None)])
+
+    def test_timer_skips_when_screenshots_disabled(self):
+        recorder, _context, invoked, _emitted = self.recorder()
+        recorder.no_screenshots = True
+        recorder.user32 = type("User32", (), {"GetForegroundWindow": staticmethod(lambda: 8)})()
+
+        recorder._on_timer_tick(type("MSG", (), {"message": WM_TIMER})())
+
+        self.assertEqual(invoked, [])

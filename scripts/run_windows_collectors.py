@@ -183,6 +183,13 @@ def run_collectors(args: argparse.Namespace) -> int:
                 rdp_arguments.append("--record-mouse-moves")
             if args.record_injected_key_events:
                 rdp_arguments.append("--record-injected-key-events")
+            if args.no_screenshots:
+                rdp_arguments.append("--no-screenshots")
+            else:
+                if args.screenshot_dir:
+                    rdp_arguments.extend(("--screenshot-dir", str(Path(args.screenshot_dir).resolve())))
+                if args.ocr_language:
+                    rdp_arguments.extend(("--ocr-language", args.ocr_language))
             processes.append(start_process(
                 rdp_arguments,
                 environment,
@@ -305,6 +312,13 @@ def main() -> int:
     )
     parser.add_argument("--record-mouse-moves", action="store_true")
     parser.add_argument("--record-injected-key-events", action="store_true")
+    parser.add_argument("--screenshot-dir", help="Directory for RDP window screenshots (default: <rdp-output>/screenshots)")
+    parser.add_argument("--ocr-language", help="Windows OCR language tag for screen text, e.g. en-US or ru-RU")
+    parser.add_argument(
+        "--no-screenshots",
+        action="store_true",
+        help="Disable RDP window screenshot capture with OCR",
+    )
     args = parser.parse_args()
     if args.background:
         if args.stop:
